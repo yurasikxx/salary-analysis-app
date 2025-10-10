@@ -1,102 +1,31 @@
--- Заполнение ролей пользователей
-INSERT INTO user_roles (name)
-VALUES ('ADMIN'),
-       ('HR'),
-       ('RATESETTER'),
-       ('ACCOUNTANT'),
-       ('ANALYST')
+INSERT INTO user_roles (name) VALUES
+                                  ('ADMIN'),
+                                  ('HR'),
+                                  ('RATESETTER'),
+                                  ('ACCOUNTANT'),
+                                  ('ANALYST')
 ON CONFLICT (name) DO NOTHING;
 
--- Заполнение подразделений
-INSERT INTO departments (name)
-VALUES ('Отдел кадров'),
-       ('Отдел труда и заработной платы'),
-       ('Бухгалтерия'),
-       ('Отдел информационных технологий'),
-       ('Производственный отдел'),
-       ('Отдел продаж')
-ON CONFLICT (name) DO NOTHING;
-
--- Заполнение должностей
-INSERT INTO positions (title, base_salary)
-VALUES ('Специалист по кадрам', 1800.00),
-       ('Специалист по организации и нормированию труда', 2000.00),
-       ('Главный бухгалтер', 2800.00),
-       ('Бухгалтер', 2000.00),
-       ('Системный администратор', 2200.00),
-       ('Инженер-программист', 2400.00),
-       ('Главный инженер', 3200.00),
-       ('Инженер-сборщик', 1900.00),
-       ('Менеджер по продажам', 1700.00),
-       ('Директор', 5000.00)
-ON CONFLICT (title) DO NOTHING;
-
--- Заполнение типов отметок
-INSERT INTO mark_types (code, name, description)
-VALUES ('Я', 'Явка', 'Рабочий день'),
-       ('ОТ', 'Отгул', 'Выходной за свой счет'),
-       ('Б', 'Больничный', 'Листок нетрудоспособности'),
-       ('О', 'Отпуск', 'Оплачиваемый отпуск'),
-       ('С', 'Сверхурочные', 'Сверхурочная работа')
-ON CONFLICT (code) DO NOTHING;
-
--- Заполнение видов оплат
-INSERT INTO payment_types (code, name, category, description)
-VALUES ('SALARY', 'Оклад', 'accrual', 'Основной оклад по отработанному времени'),
-       ('BONUS_ITR', 'Премия ИТР', 'accrual', 'Премия инженерно-техническим работникам'),
-       ('BONUS_DEPT', 'Премия по подразделению', 'accrual', 'Премия по итогам работы подразделения'),
-       ('BONUS_COMP', 'Премия по предприятию', 'accrual', 'Общая премия по предприятию'),
-       ('SENIORITY', 'Надбавка за стаж', 'accrual', 'Доплата за продолжительность работы'),
-       ('OVERTIME', 'Сверхурочные', 'accrual', 'Оплата сверхурочной работы'),
-       ('INCOME_TAX', 'Подоходный налог', 'deduction', 'Налог на доходы физических лиц'),
-       ('SOCIAL_FUND', 'Взнос в ФСЗН', 'deduction', 'Отчисления в фонд социальной защиты'),
-       ('ALIMONY', 'Алименты', 'deduction', 'Удержание по исполнительному листу'),
-       ('UNION_FEE', 'Профсоюзный взнос', 'deduction', 'Членский взнос в профсоюз')
-ON CONFLICT (code) DO NOTHING;
-
--- Заполнение сотрудников
-INSERT INTO employees (full_name, hire_date, position_id, department_id)
-VALUES
--- Отдел кадров
+INSERT INTO employees (full_name, hire_date, position_id, department_id) VALUES
 ('Петрова Анна Сергеевна', '2022-03-10', 1, 1),
-('Кочерга Людмила Сергеевна', '2021-05-05', 1, 1),
+('Кочерга Людмила Ивановна', '2023-01-15', 1, 1),
 
--- Отдел труда и заработной платы
 ('Сидоров Алексей Петрович', '2021-11-15', 2, 2),
 ('Ковалева Ирина Васильевна', '2020-06-20', 2, 2),
 
--- Бухгалтерия
 ('Никитина Ольга Дмитриевна', '2019-08-12', 3, 3),
-('Иванова Екатерина Максимовна', '2023-01-25', 4, 3),
-
--- Отдел информационных технологий
-('Козлов Денис Андреевич', '2022-09-05', 5, 4),
-('Смирнов Артем Викторович', '2023-03-18', 6, 4),
-
--- Производственный отдел
-('Васильев Михаил Юрьевич', '2018-04-15', 7, 5),
-('Павлов Сергей Николаевич', '2022-07-30', 8, 5),
-('Федоров Андрей Игоревич', '2023-11-10', 8, 5),
-
--- Отдел продаж
-('Морозова Татьяна Владимировна', '2023-02-14', 9, 6)
+('Иванова Екатерина Максимовна', '2023-01-25', 4, 3)
 ON CONFLICT DO NOTHING;
 
--- Заполнение пользователей системы с реальными хэшированными паролями
-INSERT INTO users (username, password_hash, employee_id, role_id)
-VALUES
--- Администратор (без привязки к сотруднику)
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', NULL, 1),  -- password: admin123
+INSERT INTO users (username, password_hash, employee_id, role_id, is_active) VALUES
+('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', NULL, 1, true),  -- password: admin123
 
--- Специалисты по кадрам
-('petrova.a', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 1, 2), -- password: user123
-('kocherga.l', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 2, 2),
+('petrova.a', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 1, 2, true), -- password: user123
+('kocherga.l', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 2, 2, true),
 
--- Специалисты по нормированию труда
-('sidorov.a', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 3, 3),
-('kovaleva.i', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 4, 3),
+('sidorov.a', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 3, 3, true),
+('kovaleva.i', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 4, 3, true),
 
--- Бухгалтеры
-('nikitina.o', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 5, 4),
-('ivanova.e', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 6, 4)
+('nikitina.o', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 5, 4, true),
+('ivanova.e', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVwUi.', 6, 4, true)
 ON CONFLICT (username) DO NOTHING;
