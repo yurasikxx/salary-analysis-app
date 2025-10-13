@@ -25,4 +25,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
     List<Employee> findActiveEmployeesByDepartmentName(@Param("departmentName") String departmentName);
 
     boolean existsByFullName(String fullName);
+
+    @Query("SELECT e FROM Employee e WHERE e.department = :department AND e.terminationDate IS NULL")
+    List<Employee> findByDepartmentAndTerminationDateIsNull(@Param("department") Department department);
+
 }

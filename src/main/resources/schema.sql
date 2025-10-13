@@ -1,4 +1,3 @@
--- Создание таблицы подразделений
 CREATE TABLE IF NOT EXISTS departments
 (
     id         SERIAL PRIMARY KEY,
@@ -6,7 +5,6 @@ CREATE TABLE IF NOT EXISTS departments
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы должностей
 CREATE TABLE IF NOT EXISTS positions
 (
     id          SERIAL PRIMARY KEY,
@@ -15,7 +13,6 @@ CREATE TABLE IF NOT EXISTS positions
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы сотрудников
 CREATE TABLE IF NOT EXISTS employees
 (
     id               SERIAL PRIMARY KEY,
@@ -27,14 +24,12 @@ CREATE TABLE IF NOT EXISTS employees
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы ролей пользователей
 CREATE TABLE IF NOT EXISTS user_roles
 (
     id   SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE
 );
 
--- Создание таблицы пользователей системы
 CREATE TABLE IF NOT EXISTS users
 (
     id            SERIAL PRIMARY KEY,
@@ -46,7 +41,6 @@ CREATE TABLE IF NOT EXISTS users
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы типов отметок (явка, отгул, больничный и т.д.)
 CREATE TABLE IF NOT EXISTS mark_types
 (
     id          SERIAL PRIMARY KEY,
@@ -55,7 +49,6 @@ CREATE TABLE IF NOT EXISTS mark_types
     description TEXT
 );
 
--- Создание таблицы видов оплат (начисления и удержания)
 CREATE TABLE IF NOT EXISTS payment_types
 (
     id          SERIAL PRIMARY KEY,
@@ -63,10 +56,9 @@ CREATE TABLE IF NOT EXISTS payment_types
     name        VARCHAR(100) NOT NULL,
     category    VARCHAR(20)  NOT NULL CHECK (category IN ('accrual', 'deduction')),
     description TEXT,
-    formula     TEXT -- формула расчета (опционально)
+    formula     TEXT
 );
 
--- Создание таблицы табелей (общая информация по периоду)
 CREATE TABLE IF NOT EXISTS timesheets
 (
     id           SERIAL PRIMARY KEY,
@@ -81,7 +73,6 @@ CREATE TABLE IF NOT EXISTS timesheets
     UNIQUE (employee_id, month, year)
 );
 
--- Создание таблицы записей табеля (по дням)
 CREATE TABLE IF NOT EXISTS timesheet_entries
 (
     id           SERIAL PRIMARY KEY,
@@ -92,7 +83,6 @@ CREATE TABLE IF NOT EXISTS timesheet_entries
     created_at   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы операций по оплате (начисления и удержания)
 CREATE TABLE IF NOT EXISTS payments
 (
     id              SERIAL PRIMARY KEY,
@@ -106,7 +96,6 @@ CREATE TABLE IF NOT EXISTS payments
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы итоговых расчетов зарплаты
 CREATE TABLE IF NOT EXISTS salary_payments
 (
     id               SERIAL PRIMARY KEY,
@@ -121,7 +110,6 @@ CREATE TABLE IF NOT EXISTS salary_payments
     UNIQUE (employee_id, month, year)
 );
 
--- Создание индексов для оптимизации
 CREATE INDEX IF NOT EXISTS idx_employees_department ON employees (department_id);
 CREATE INDEX IF NOT EXISTS idx_employees_position ON employees (position_id);
 CREATE INDEX IF NOT EXISTS idx_users_employee ON users (employee_id);

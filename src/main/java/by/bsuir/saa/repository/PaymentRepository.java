@@ -24,7 +24,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
                                                        @Param("year") Integer year,
                                                        @Param("category") String category);
 
-    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.employee = :employee AND p.month = :month AND p.year = :year AND p.paymentType.category = :category")
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
+            "WHERE p.employee = :employee AND p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = :category")
     BigDecimal sumAmountByEmployeeAndPeriodAndCategory(@Param("employee") Employee employee,
                                                        @Param("month") Integer month,
                                                        @Param("year") Integer year,
