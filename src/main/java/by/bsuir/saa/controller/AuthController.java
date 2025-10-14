@@ -28,9 +28,4 @@ public class AuthController {
     public String accessDenied() {
         return "auth/access-denied";
     }
-
-    @GetMapping("/dashboard")
-    public String dashboard() {
-        return "dashboard";
-    }
 }

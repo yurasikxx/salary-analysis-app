@@ -37,7 +37,21 @@ public class HrController {
     @GetMapping("/employees")
     public String employeesPage(Model model) {
         List<Employee> employees = employeeService.getAllEmployees();
+
+        long activeCount = employees.stream()
+                .filter(e -> e.getTerminationDate() == null)
+                .count();
+        long terminatedCount = employees.size() - activeCount;
+        long departmentCount = employees.stream()
+                .map(Employee::getDepartment)
+                .distinct()
+                .count();
+
         model.addAttribute("employees", employees);
+        model.addAttribute("activeCount", activeCount);
+        model.addAttribute("terminatedCount", terminatedCount);
+        model.addAttribute("departmentCount", departmentCount);
+
         return "hr/employees";
     }
 
@@ -89,6 +103,6 @@ public class HrController {
     public String terminateEmployee(@PathVariable Integer id,
                                     @RequestParam String terminationDate) {
         employeeService.terminateEmployee(id, LocalDate.parse(terminationDate));
-        return "redirect:/hr/employees?success=Employee terminated";
+        return "redirect:/hr/employees?success=Employee terminated successfully";
     }
 }
