@@ -18,6 +18,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
 
     List<Payment> findByPaymentType(PaymentType paymentType);
 
+    List<Payment> findByMonthAndYear(Integer month, Integer year);
+
     @Query("SELECT p FROM Payment p WHERE p.employee.department.id = :departmentId AND p.month = :month AND p.year = :year AND p.paymentType.category = :category")
     List<Payment> findByDepartmentAndPeriodAndCategory(@Param("departmentId") Integer departmentId,
                                                        @Param("month") Integer month,
@@ -31,4 +33,16 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
                                                        @Param("month") Integer month,
                                                        @Param("year") Integer year,
                                                        @Param("category") String category);
+
+    @Query("SELECT COALESCE(SUM(ABS(p.amount)), 0) FROM Payment p " +
+            "WHERE p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction'")
+    BigDecimal sumTaxesByPeriod(@Param("month") Integer month, @Param("year") Integer year);
+
+    @Query("SELECT p.paymentType.name, SUM(ABS(p.amount)) " +
+            "FROM Payment p " +
+            "WHERE p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction' " +
+            "GROUP BY p.paymentType.name")
+    List<Object[]> findTaxDetailsByPeriod(@Param("month") Integer month, @Param("year") Integer year);
 }

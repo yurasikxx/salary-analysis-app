@@ -75,4 +75,8 @@ public class TimesheetService {
         timesheet.setTotalHours(total);
         timesheetRepository.save(timesheet);
     }
+
+    public List<Timesheet> getTimesheetsByPeriod(Integer month, Integer year) {
+        return timesheetRepository.findByMonthAndYear(month, year);
+    }
 }

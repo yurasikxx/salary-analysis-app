@@ -18,6 +18,8 @@ public interface SalaryPaymentRepository extends JpaRepository<SalaryPayment, In
 
     List<SalaryPayment> findByEmployee(Employee employee);
 
+    List<SalaryPayment> findByMonthAndYear(Integer month, Integer year);
+
     @Query("SELECT sp FROM SalaryPayment sp WHERE sp.employee.department.id = :departmentId AND sp.month = :month AND sp.year = :year")
     List<SalaryPayment> findByDepartmentAndPeriod(@Param("departmentId") Integer departmentId,
                                                   @Param("month") Integer month,
@@ -71,4 +73,15 @@ public interface SalaryPaymentRepository extends JpaRepository<SalaryPayment, In
     Long findEmployeeCountByDepartmentAndPeriod(@Param("departmentId") Integer departmentId,
                                                 @Param("month") Integer month,
                                                 @Param("year") Integer year);
+
+    @Query("SELECT COALESCE(SUM(ABS(p.amount)), 0) FROM Payment p " +
+            "WHERE p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction'")
+    BigDecimal sumTaxesByPeriod(@Param("month") Integer month, @Param("year") Integer year);
+
+    @Query("SELECT sp.employee.department.name, AVG(sp.netSalary), SUM(sp.netSalary), COUNT(sp.employee) " +
+            "FROM SalaryPayment sp " +
+            "WHERE sp.month = :month AND sp.year = :year " +
+            "GROUP BY sp.employee.department.name")
+    List<Object[]> findDepartmentSummary(@Param("month") Integer month, @Param("year") Integer year);
 }

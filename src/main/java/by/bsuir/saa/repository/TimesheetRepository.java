@@ -17,10 +17,13 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Integer> {
 
     List<Timesheet> findByEmployee(Employee employee);
 
+    boolean existsByEmployeeAndMonthAndYear(Employee employee, Integer month, Integer year);
+
     @Query("SELECT t FROM Timesheet t WHERE t.employee.department.id = :departmentId AND t.month = :month AND t.year = :year")
     List<Timesheet> findByDepartmentAndPeriod(@Param("departmentId") Integer departmentId,
                                               @Param("month") Integer month,
                                               @Param("year") Integer year);
 
-    boolean existsByEmployeeAndMonthAndYear(Employee employee, Integer month, Integer year);
+    @Query("SELECT t FROM Timesheet t WHERE t.month = :month AND t.year = :year")
+    List<Timesheet> findByMonthAndYear(@Param("month") Integer month, @Param("year") Integer year);
 }

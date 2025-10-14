@@ -21,12 +21,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
 
     List<Employee> findByFullNameContainingIgnoreCase(String name);
 
+    boolean existsByFullName(String fullName);
+
     @Query("SELECT e FROM Employee e WHERE e.department.name = :departmentName AND e.terminationDate IS NULL")
     List<Employee> findActiveEmployeesByDepartmentName(@Param("departmentName") String departmentName);
 
-    boolean existsByFullName(String fullName);
-
     @Query("SELECT e FROM Employee e WHERE e.department = :department AND e.terminationDate IS NULL")
     List<Employee> findByDepartmentAndTerminationDateIsNull(@Param("department") Department department);
+
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.department.id = :departmentId AND e.terminationDate IS NULL")
+    long countByDepartmentId(@Param("departmentId") Integer departmentId);
 
 }
