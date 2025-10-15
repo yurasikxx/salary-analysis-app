@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Табели учета - Salary Analysis App</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+
+    <style>
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .nav-link {
+            color: #495057;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin: 0.125rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+        }
+
+        .period-selector {
+            background-color: #f8f9fa;
+            border-radius: 0.375rem;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" th:href="@{/}">
+            <i class="bi bi-graph-up"></i> Salary Analysis
+        </a>
+
+        <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    <i class="bi bi-person-circle"></i>
+                    <span sec:authentication="name"></span>
+                </span>
+            <a th:href="@{/logout}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right"></i> Выйти
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/dashboard}">
+                            <i class="bi bi-speedometer2"></i> Главная
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/hr/employees}">
+                            <i class="bi bi-person-badge"></i> Сотрудники
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" th:href="@{/hr/timesheets}">
+                            <i class="bi bi-calendar-check"></i> Табели
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="bi bi-calendar-check"></i> Табели учета рабочего времени
+                </h1>
+            </div>
+
+            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                <span th:text="${param.success}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span th:text="${param.error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body period-selector">
+                    <form method="get" th:action="@{/hr/timesheets}" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label for="month" class="form-label">Месяц</label>
+                            <select class="form-select" id="month" name="month">
+                                <option value="1" th:selected="${month == 1}">Январь</option>
+                                <option value="2" th:selected="${month == 2}">Февраль</option>
+                                <option value="3" th:selected="${month == 3}">Март</option>
+                                <option value="4" th:selected="${month == 4}">Апрель</option>
+                                <option value="5" th:selected="${month == 5}">Май</option>
+                                <option value="6" th:selected="${month == 6}">Июнь</option>
+                                <option value="7" th:selected="${month == 7}">Июль</option>
+                                <option value="8" th:selected="${month == 8}">Август</option>
+                                <option value="9" th:selected="${month == 9}">Сентябрь</option>
+                                <option value="10" th:selected="${month == 10}">Октябрь</option>
+                                <option value="11" th:selected="${month == 11}">Ноябрь</option>
+                                <option value="12" th:selected="${month == 12}">Декабрь</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">Год</label>
+                            <select class="form-select" id="year" name="year">
+                                <option value="2024" th:selected="${year == 2024}">2024</option>
+                                <option value="2025" th:selected="${year == 2025}">2025</option>
+                                <option value="2026" th:selected="${year == 2026}">2026</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="departmentId" class="form-label">Отдел (опционально)</label>
+                            <select class="form-select" id="departmentId" name="departmentId">
+                                <option value="">Все отделы</option>
+                                <option th:each="dept : ${departments}"
+                                        th:value="${dept.id}"
+                                        th:text="${dept.name}"
+                                        th:selected="${departmentId == dept.id}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-filter"></i> Применить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> Табели за
+                        <span th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></span>
+                    </h5>
+                    <div>
+                        <span class="badge bg-success me-2" th:text="${confirmedCount} + ' подтверждённых'"></span>
+                        <span class="badge bg-warning" th:text="${draftCount} + ' черновиков'"></span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th>Отдел</th>
+                                <th>Отработано часов</th>
+                                <th>Статус</th>
+                                <th>Дата подтверждения</th>
+                                <th>Действия</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="timesheet : ${timesheets}">
+                                <td th:text="${timesheet.employee.fullName}"></td>
+                                <td th:text="${timesheet.employee.department.name}"></td>
+                                <td>
+                                            <span th:text="${timesheet.totalHours} + ' ч.'"
+                                                  th:class="${timesheet.totalHours > 0 ? 'fw-bold text-primary' : ''}">
+                                            </span>
+                                </td>
+                                <td>
+                                            <span th:if="${timesheet.status == 'CONFIRMED'}"
+                                                  class="badge bg-success">
+                                                <i class="bi bi-check-circle"></i> Подтверждён
+                                            </span>
+                                    <span th:unless="${timesheet.status == 'CONFIRMED'}"
+                                          class="badge bg-warning">
+                                                <i class="bi bi-pencil"></i> Черновик
+                                            </span>
+                                </td>
+                                <td>
+                                            <span th:if="${timesheet.confirmedAt != null}"
+                                                  th:text="${#temporals.format(timesheet.confirmedAt, 'dd.MM.yyyy HH:mm')}">
+                                            </span>
+                                    <span th:unless="${timesheet.confirmedAt != null}"
+                                          class="text-muted">Не подтверждён</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a th:href="@{/hr/timesheets/{id}/edit(id=${timesheet.id})}"
+                                           class="btn btn-outline-primary"
+                                           th:title="${timesheet.status == 'CONFIRMED' ? 'Просмотр' : 'Редактировать'}">
+                                            <i th:class="${timesheet.status == 'CONFIRMED' ? 'bi bi-eye' : 'bi bi-pencil'}"></i>
+                                        </a>
+                                        <button th:if="${timesheet.status != 'CONFIRMED'}"
+                                                class="btn btn-outline-success"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#confirmModal"
+                                                th:attr="data-bs-timesheet-id=${timesheet.id},
+                                                                 data-bs-employee-name=${timesheet.employee.fullName}">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(timesheets)}">
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-calendar-x display-4"></i>
+                                    <p class="mt-2">Табели не найдены</p>
+                                    <p class="small">Измените параметры фильтра или создайте табели для сотрудников</p>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body text-center">
+                            <i class="bi bi-calendar-check fs-1 mb-2"></i>
+                            <h6 class="card-title">Всего табелей</h6>
+                            <h3 th:text="${#lists.size(timesheets)}">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body text-center">
+                            <i class="bi bi-check-circle fs-1 mb-2"></i>
+                            <h6 class="card-title">Подтверждённых</h6>
+                            <h3 th:text="${confirmedCount}">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body text-center">
+                            <i class="bi bi-pencil fs-1 mb-2"></i>
+                            <h6 class="card-title">Черновиков</h6>
+                            <h3 th:text="${draftCount}">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body text-center">
+                            <i class="bi bi-clock fs-1 mb-2"></i>
+                            <h6 class="card-title">Среднее время</h6>
+                            <h3 th:text="${averageHours} + ' ч.'">0 ч.</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение табеля</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите подтвердить табель сотрудника <strong id="employeeName"></strong>?</p>
+                <p class="text-muted small">После подтверждения табель будет заблокирован для редактирования и передан в
+                    расчёт заработной платы.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="confirmForm" method="post" style="display: inline;">
+                    <input type="hidden" name="_method" value="post">
+                    <button type="submit" class="btn btn-success">Подтвердить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const confirmModal = document.getElementById('confirmModal');
+    if (confirmModal) {
+        confirmModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const timesheetId = button.getAttribute('data-bs-timesheet-id');
+            document.getElementById('employeeName').textContent = button.getAttribute('data-bs-employee-name');
+            document.getElementById('confirmForm').action = '/hr/timesheets/' + timesheetId + '/confirm';
+        });
+    }
+</script>
+</body>
+</html>
