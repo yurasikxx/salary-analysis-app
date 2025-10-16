@@ -18,6 +18,9 @@
            class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Назад
         </a>
+        <button class="btn btn-outline-danger" onclick="exportEmployeeToPDF()">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </button>
         <button class="btn btn-outline-primary" onclick="window.print()">
             <i class="bi bi-printer"></i> Печать
         </button>
@@ -283,8 +286,11 @@
 </div>
 
 <div id="scripts">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {
@@ -293,6 +299,63 @@
                 }, 5000);
             });
         });
+
+        async function exportEmployeeToPDF() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const margin = 15;
+
+                let currentY = 15;
+
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('РАСЧЕТНЫЙ ЛИСТОК', pageWidth / 2, currentY, { align: 'center' });
+                currentY += 10;
+
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'normal');
+                const employeeName = document.querySelector('.card-body p:first-child strong + span')?.textContent || '';
+                const position = document.querySelector('.card-body p:nth-child(2) strong + span')?.textContent || '';
+                const department = document.querySelector('.card-body p:nth-child(3) strong + span')?.textContent || '';
+                const period = document.querySelector('.card-body p:nth-child(4) strong + span')?.textContent || '';
+
+                pdf.text(`Сотрудник: ${employeeName}`, margin, currentY);
+                currentY += 6;
+                pdf.text(`Должность: ${position}`, margin, currentY);
+                currentY += 6;
+                pdf.text(`Отдел: ${department}`, margin, currentY);
+                currentY += 6;
+                pdf.text(`Период: ${period}`, margin, currentY);
+                currentY += 6;
+                pdf.text(`Дата формирования: ${new Date().toLocaleDateString('ru-RU')}`, margin, currentY);
+                currentY += 15;
+
+                pdf.setFont('helvetica', 'bold');
+                const totalAccruals = document.querySelector('.bg-success h3')?.textContent || '0 руб.';
+                const totalDeductions = document.querySelector('.bg-danger h3')?.textContent || '0 руб.';
+                const netSalary = document.querySelector('.bg-primary h3')?.textContent || '0 руб.';
+
+                pdf.text('ИТОГИ РАСЧЕТА:', margin, currentY);
+                currentY += 8;
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Начислено: ${totalAccruals}`, margin + 5, currentY);
+                currentY += 6;
+                pdf.text(`Удержано: ${totalDeductions}`, margin + 5, currentY);
+                currentY += 6;
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(`К выплате: ${netSalary}`, margin + 5, currentY);
+                currentY += 15;
+
+                const fileName = `calculation_${employeeName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(fileName);
+
+            } catch (error) {
+                console.error('Ошибка при экспорте в PDF:', error);
+                alert('Произошла ошибка при формировании PDF.');
+            }
+        }
 
         function confirmDelete(message) {
             return confirm(message || 'Вы уверены, что хотите удалить эту запись?');

@@ -173,7 +173,8 @@
                                 <td colspan="7" class="text-center text-muted py-4">
                                     <i class="bi bi-table display-4"></i>
                                     <p class="mt-2">Данные не найдены</p>
-                                    <p class="small">Измените параметры фильтра или выполните расчеты за выбранный период</p>
+                                    <p class="small">Измените параметры фильтра или выполните расчеты за выбранный
+                                        период</p>
                                 </td>
                             </tr>
                             </tbody>
@@ -312,9 +313,11 @@
 <div id="scripts">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {
@@ -419,7 +422,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const label = context.label || '';
                                     const value = context.raw || 0;
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -453,7 +456,7 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: function(value) {
+                                callback: function (value) {
                                     return value.toLocaleString('ru-RU') + ' руб.';
                                 }
                             }
@@ -479,6 +482,7 @@
 
                 data.push(['Отчет по заработной плате', '', '', '', '', '', '']);
                 data.push(['Период', document.querySelector('h5 span')?.textContent || '', '', '', '', '', '']);
+                data.push(['Дата формирования', new Date().toLocaleDateString('ru-RU'), '', '', '', '', '']);
                 data.push([]);
 
                 data.push(['Сотрудник', 'Отдел', 'Тип операции', 'Категория', 'Сумма (руб.)', 'Описание', 'Дата создания']);
@@ -487,9 +491,8 @@
                     if (!row.querySelector('.table-group-divider')) {
                         const rowData = [];
                         row.querySelectorAll('td').forEach((cell, index) => {
-                            if (index < 7) { // Берем только первые 7 колонок
+                            if (index < 7) {
                                 let text = cell.textContent.trim();
-                                // Очищаем текст от лишних символов
                                 text = text.replace(/\s+/g, ' ').replace(/[+-]/g, '').trim();
                                 rowData.push(text);
                             }
@@ -506,19 +509,13 @@
                 data.push(['Всего к выплате:', '', '', '', document.querySelector('.text-primary')?.textContent || '0 руб.', '', '']);
 
                 const ws = XLSX.utils.aoa_to_sheet(data);
-
-                ws['!cols'] = [
-                    {wch: 25},
-                    {wch: 20},
-                    {wch: 20},
-                    {wch: 15},
-                    {wch: 15},
-                    {wch: 30},
-                    {wch: 15}
+                const colWidths = [
+                    {wch: 25}, {wch: 20}, {wch: 20},
+                    {wch: 15}, {wch: 15}, {wch: 30}, {wch: 15}
                 ];
+                ws['!cols'] = colWidths;
 
                 XLSX.utils.book_append_sheet(wb, ws, 'Отчет по ЗП');
-
                 const fileName = `salary_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
                 XLSX.writeFile(wb, fileName);
 
@@ -528,8 +525,240 @@
             }
         }
 
-        function exportToPDF() {
-            alert('Функция экспорта в PDF будет реализована в следующей версии');
+        async function exportToPDF() {
+            try {
+                const originalText = event.target.innerHTML;
+                event.target.innerHTML = '<i class="bi bi-hourglass-split"></i> Формирование PDF...';
+                event.target.disabled = true;
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const {jsPDF} = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                let currentY = 10;
+                const margin = 10;
+                const contentWidth = pageWidth - 2 * margin;
+
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('ОТЧЕТ ПО ЗАРАБОТНОЙ ПЛАТЕ', pageWidth / 2, currentY, {align: 'center'});
+                currentY += 8;
+
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'normal');
+                const periodText = document.querySelector('h5 span')?.textContent || 'Не указан';
+                pdf.text(`Период: ${periodText}`, margin, currentY);
+                currentY += 6;
+
+                pdf.text(`Дата формирования: ${new Date().toLocaleDateString('ru-RU')}`, margin, currentY);
+                currentY += 10;
+
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('СВОДНАЯ СТАТИСТИКА', margin, currentY);
+                currentY += 8;
+
+                pdf.setFont('helvetica', 'normal');
+                const totalAccruals = document.querySelector('.bg-primary h3')?.textContent || '0 руб.';
+                const totalDeductions = document.querySelector('.bg-danger h3')?.textContent || '0 руб.';
+                const netTotal = document.querySelector('.bg-success h3')?.textContent || '0 руб.';
+                const operationsCount = document.querySelector('.bg-info h3')?.textContent || '0';
+
+                pdf.text(`• Всего начислено: ${totalAccruals}`, margin + 5, currentY);
+                currentY += 5;
+                pdf.text(`• Всего удержано: ${totalDeductions}`, margin + 5, currentY);
+                currentY += 5;
+                pdf.text(`• К выплате: ${netTotal}`, margin + 5, currentY);
+                currentY += 5;
+                pdf.text(`• Количество операций: ${operationsCount}`, margin + 5, currentY);
+                currentY += 10;
+
+                await addTableToPDF(pdf, margin, currentY, contentWidth);
+
+                currentY = await addChartsToPDF(pdf, margin, currentY, contentWidth);
+
+                pdf.setFontSize(10);
+                pdf.setTextColor(128, 128, 128);
+                pdf.text(`Страница 1 из 1`, pageWidth / 2, pageHeight - 10, {align: 'center'});
+
+                const fileName = `salary_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(fileName);
+
+            } catch (error) {
+                console.error('Ошибка при экспорте в PDF:', error);
+                alert('Произошла ошибка при формировании PDF. Проверьте консоль для подробностей.');
+            } finally {
+                event.target.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> PDF';
+                event.target.disabled = false;
+            }
+        }
+
+        async function addTableToPDF(pdf, startX, startY, width) {
+            const table = document.querySelector('.table');
+            if (!table) return startY;
+
+            const headers = [];
+            table.querySelectorAll('thead th').forEach(th => {
+                headers.push(th.textContent.trim());
+            });
+
+            const rows = [];
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                const row = [];
+                tr.querySelectorAll('td').forEach(td => {
+                    let text = td.textContent.trim();
+                    text = text.replace(/\s+/g, ' ').replace(/[+-]/g, '').trim();
+                    row.push(text);
+                });
+                if (row.length > 0) {
+                    rows.push(row);
+                }
+            });
+
+            const colWidths = [width * 0.25, width * 0.2, width * 0.2, width * 0.15, width * 0.1, width * 0.1];
+            const rowHeight = 8;
+            let currentY = startY;
+
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('ДЕТАЛИЗАЦИЯ РАСЧЕТОВ', startX, currentY);
+            currentY += 8;
+
+            pdf.setFillColor(52, 58, 64);
+            pdf.setTextColor(255, 255, 255);
+            pdf.rect(startX, currentY, width, rowHeight, 'F');
+
+            let x = startX;
+            headers.forEach((header, index) => {
+                if (index < colWidths.length) {
+                    pdf.text(header, x + 2, currentY + 5);
+                    x += colWidths[index];
+                }
+            });
+            currentY += rowHeight;
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+
+            rows.forEach((row, rowIndex) => {
+                if (currentY + rowHeight > pdf.internal.pageSize.getHeight() - 20) {
+                    pdf.addPage();
+                    currentY = 10;
+                }
+
+                x = startX;
+                row.forEach((cell, cellIndex) => {
+                    if (cellIndex < colWidths.length) {
+                        const cellText = cell.length > 30 ? cell.substring(0, 27) + '...' : cell;
+                        pdf.text(cellText, x + 2, currentY + 5);
+                        x += colWidths[cellIndex];
+                    }
+                });
+
+                if (rowIndex % 2 === 0) {
+                    pdf.setFillColor(248, 249, 250);
+                    pdf.rect(startX, currentY, width, rowHeight, 'F');
+                    x = startX;
+                    row.forEach((cell, cellIndex) => {
+                        if (cellIndex < colWidths.length) {
+                            const cellText = cell.length > 30 ? cell.substring(0, 27) + '...' : cell;
+                            pdf.text(cellText, x + 2, currentY + 5);
+                            x += colWidths[cellIndex];
+                        }
+                    });
+                }
+
+                currentY += rowHeight;
+            });
+
+            currentY += 5;
+            pdf.setFont('helvetica', 'bold');
+            const totalAccruals = document.querySelector('.text-success')?.textContent || '0 руб.';
+            const totalDeductions = document.querySelector('.text-danger')?.textContent || '0 руб.';
+            const netTotal = document.querySelector('.text-primary')?.textContent || '0 руб.';
+
+            pdf.text(`Итого начислений: ${totalAccruals}`, startX, currentY);
+            currentY += 6;
+            pdf.text(`Итого удержаний: ${totalDeductions}`, startX, currentY);
+            currentY += 6;
+            pdf.setFontSize(14);
+            pdf.text(`Всего к выплате: ${netTotal}`, startX, currentY);
+            currentY += 15;
+
+            return currentY;
+        }
+
+        async function addChartsToPDF(pdf, startX, startY, width) {
+            let currentY = startY;
+
+            const departmentChart = document.getElementById('departmentPieChart');
+            const paymentTypesChart = document.getElementById('paymentTypesChart');
+
+            if (departmentChart || paymentTypesChart) {
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('АНАЛИТИКА И ДИАГРАММЫ', startX, currentY);
+                currentY += 8;
+            }
+
+            if (departmentChart) {
+                if (currentY + 80 > pdf.internal.pageSize.getHeight() - 20) {
+                    pdf.addPage();
+                    currentY = 10;
+                }
+
+                try {
+                    const canvas = await html2canvas(departmentChart);
+                    const imgData = canvas.toDataURL('image/png');
+                    pdf.addImage(imgData, 'PNG', startX, currentY, width / 2 - 5, 60);
+                } catch (error) {
+                    console.error('Ошибка при создании диаграммы отделов:', error);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text('Диаграмма распределения ФОТ по отделам', startX, currentY + 30);
+                }
+            }
+
+            if (paymentTypesChart) {
+                const secondChartX = startX + width / 2 + 5;
+
+                if (currentY + 80 > pdf.internal.pageSize.getHeight() - 20) {
+                    pdf.addPage();
+                    currentY = 10;
+                }
+
+                try {
+                    const canvas = await html2canvas(paymentTypesChart);
+                    const imgData = canvas.toDataURL('image/png');
+                    pdf.addImage(imgData, 'PNG', secondChartX, currentY, width / 2 - 5, 60);
+                } catch (error) {
+                    console.error('Ошибка при создании диаграммы типов выплат:', error);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text('Диаграмма структуры выплат', secondChartX, currentY + 30);
+                }
+
+                currentY += 70;
+            }
+
+            return currentY;
+        }
+
+        function quickExportToPDF() {
+            try {
+                const {jsPDF} = window.jspdf;
+                const pdf = new jsPDF();
+
+                pdf.text('Отчет по заработной плате', 20, 20);
+                pdf.text(`Период: ${document.querySelector('h5 span')?.textContent || 'Не указан'}`, 20, 30);
+                pdf.text(`Дата: ${new Date().toLocaleDateString('ru-RU')}`, 20, 40);
+
+                const fileName = `salary_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(fileName);
+            } catch (error) {
+                console.error('Ошибка быстрого экспорта:', error);
+                alert('Ошибка при создании PDF');
+            }
         }
     </script>
 </div>
