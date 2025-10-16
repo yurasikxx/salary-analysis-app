@@ -126,7 +126,7 @@ public class HrController {
         }
 
         long confirmedCount = timesheets.stream()
-                .filter(t -> "CONFIRMED".equals(t.getStatus()))
+                .filter(t -> t.getStatus() == Timesheet.TimesheetStatus.CONFIRMED)
                 .count();
         long draftCount = timesheets.size() - confirmedCount;
 
@@ -290,7 +290,7 @@ public class HrController {
 
         long totalTimesheets = timesheets.size();
         long confirmedTimesheets = timesheets.stream()
-                .filter(t -> "CONFIRMED".equals(t.getStatus()))
+                .filter(t -> t.getStatus() == Timesheet.TimesheetStatus.CONFIRMED)
                 .count();
 
         double avgHours = timesheets.stream()

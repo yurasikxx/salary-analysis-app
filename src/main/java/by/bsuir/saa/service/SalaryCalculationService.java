@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -31,22 +33,33 @@ public class SalaryCalculationService {
         this.timesheetService = timesheetService;
     }
 
-    public Payment calculateBasicSalary(Employee employee, Integer month, Integer year) {
+    public void calculateBasicSalary(Employee employee, Integer month, Integer year) {
+        PaymentType salaryType = paymentTypeRepository.findByCode("SALARY")
+                .orElseThrow(() -> new RuntimeException("Тип оплаты 'Оклад' не найден"));
+
+        Optional<Payment> existingSalary = paymentRepository.findByEmployeeAndMonthAndYearAndPaymentType(
+                employee, month, year, salaryType);
+
+        if (existingSalary.isPresent()) {
+            throw new RuntimeException("Основная зарплата уже рассчитана для этого периода");
+        }
+
         Optional<Timesheet> timesheet = timesheetService.getTimesheet(employee, month, year);
         if (timesheet.isEmpty()) {
             throw new RuntimeException("Табель не найден для сотрудника: " + employee.getFullName());
         }
 
+        if (timesheet.get().getStatus() != Timesheet.TimesheetStatus.CONFIRMED) {
+            throw new RuntimeException("Табель не подтвержден. Расчет невозможен.");
+        }
+
         BigDecimal workedHours = timesheet.get().getTotalHours();
-        BigDecimal monthlyHours = BigDecimal.valueOf(160); // Норма часов в месяце
+        BigDecimal monthlyHours = BigDecimal.valueOf(160);
         BigDecimal baseSalary = employee.getPosition().getBaseSalary();
 
         BigDecimal salaryAmount = baseSalary
                 .divide(monthlyHours, 2, RoundingMode.HALF_UP)
                 .multiply(workedHours);
-
-        PaymentType salaryType = paymentTypeRepository.findByCode("SALARY")
-                .orElseThrow(() -> new RuntimeException("Тип оплаты 'ЗАРПЛАТА' не найден"));
 
         Payment payment = new Payment();
         payment.setEmployee(employee);
@@ -54,7 +67,35 @@ public class SalaryCalculationService {
         payment.setYear(year);
         payment.setPaymentType(salaryType);
         payment.setAmount(salaryAmount);
-        payment.setDescription("Основной оклад за " + month + "/" + year);
+        payment.setDescription("Основной оклад за " + month + "/" + year + " (" + workedHours + " часов)");
+
+        paymentRepository.save(payment);
+    }
+
+    public Payment addBonus(Employee employee, Integer month, Integer year,
+                            PaymentType paymentType, BigDecimal amount, String description) {
+
+        if (!"accrual".equals(paymentType.getCategory())) {
+            throw new RuntimeException("Можно добавлять только начисления (accrual)");
+        }
+
+        PaymentType salaryType = paymentTypeRepository.findByCode("SALARY")
+                .orElseThrow(() -> new RuntimeException("Тип оплаты 'Оклад' не найден"));
+
+        Optional<Payment> basicSalary = paymentRepository.findByEmployeeAndMonthAndYearAndPaymentType(
+                employee, month, year, salaryType);
+
+        if (basicSalary.isEmpty()) {
+            throw new RuntimeException("Сначала необходимо рассчитать основную зарплату");
+        }
+
+        Payment payment = new Payment();
+        payment.setEmployee(employee);
+        payment.setMonth(month);
+        payment.setYear(year);
+        payment.setPaymentType(paymentType);
+        payment.setAmount(amount);
+        payment.setDescription(description != null ? description : paymentType.getName());
 
         return paymentRepository.save(payment);
     }
@@ -64,18 +105,10 @@ public class SalaryCalculationService {
         PaymentType bonusType = paymentTypeRepository.findByCode(bonusTypeCode)
                 .orElseThrow(() -> new RuntimeException("Тип оплаты не найден: " + bonusTypeCode));
 
-        Payment payment = new Payment();
-        payment.setEmployee(employee);
-        payment.setMonth(month);
-        payment.setYear(year);
-        payment.setPaymentType(bonusType);
-        payment.setAmount(amount);
-        payment.setDescription(description);
-
-        return paymentRepository.save(payment);
+        return addBonus(employee, month, year, bonusType, amount, description);
     }
 
-    public Payment calculateIncomeTax(Employee employee, Integer month, Integer year) {
+    public void calculateIncomeTax(Employee employee, Integer month, Integer year) {
         BigDecimal totalAccrued = paymentRepository
                 .sumAmountByEmployeeAndPeriodAndCategory(employee, month, year, "accrual");
 
@@ -91,12 +124,12 @@ public class SalaryCalculationService {
         payment.setYear(year);
         payment.setPaymentType(taxType);
         payment.setAmount(taxAmount.negate());
-        payment.setDescription("Подоходный налог");
+        payment.setDescription("Подоходный налог 13%");
 
-        return paymentRepository.save(payment);
+        paymentRepository.save(payment);
     }
 
-    public SalaryPayment calculateFinalSalary(Employee employee, Integer month, Integer year) {
+    public void calculateFinalSalary(Employee employee, Integer month, Integer year) {
         BigDecimal totalAccrued = paymentRepository
                 .sumAmountByEmployeeAndPeriodAndCategory(employee, month, year, "accrual");
 
@@ -114,10 +147,60 @@ public class SalaryCalculationService {
         salaryPayment.setNetSalary(netSalary);
         salaryPayment.setStatus(SalaryPayment.SalaryStatus.CALCULATED);
 
-        return salaryPaymentRepository.save(salaryPayment);
+        salaryPaymentRepository.save(salaryPayment);
     }
 
     public List<Payment> getEmployeePayments(Employee employee, Integer month, Integer year) {
         return paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+    }
+
+    public Map<Integer, List<Payment>> getPaymentsForPeriod(Integer month, Integer year) {
+        List<Payment> payments = paymentRepository.findByMonthAndYear(month, year);
+
+        return payments.stream()
+                .collect(Collectors.groupingBy(p -> p.getEmployee().getId()));
+    }
+
+    public BigDecimal calculateTotalAccruals(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+
+        return payments.stream()
+                .filter(p -> "accrual".equals(p.getPaymentType().getCategory()))
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal calculateTotalDeductions(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+
+        return payments.stream()
+                .filter(p -> "deduction".equals(p.getPaymentType().getCategory()))
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal calculateNetSalary(Employee employee, Integer month, Integer year) {
+        BigDecimal accruals = calculateTotalAccruals(employee, month, year);
+        BigDecimal deductions = calculateTotalDeductions(employee, month, year);
+
+        return accruals.subtract(deductions);
+    }
+
+    public void deletePayment(Integer paymentId) {
+        paymentRepository.deleteById(paymentId);
+    }
+
+    public void recalculateAllForPeriod(Integer month, Integer year, List<Employee> employees) {
+        for (Employee employee : employees) {
+            try {
+                List<Payment> oldPayments = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+                paymentRepository.deleteAll(oldPayments);
+
+                calculateBasicSalary(employee, month, year);
+
+            } catch (Exception e) {
+                System.err.println("Ошибка при расчете для сотрудника " + employee.getFullName() + ": " + e.getMessage());
+            }
+        }
     }
 }

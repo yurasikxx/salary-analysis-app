@@ -10,11 +10,17 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Integer> {
 
     List<Payment> findByEmployeeAndMonthAndYear(Employee employee, Integer month, Integer year);
+
+    Optional<Payment> findByEmployeeAndMonthAndYearAndPaymentType(Employee employee,
+                                                                  Integer month,
+                                                                  Integer year,
+                                                                  PaymentType paymentType);
 
     List<Payment> findByPaymentType(PaymentType paymentType);
 

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Расчет зарплаты сотрудника - Salary Analysis App</title>
+</head>
+<body th:replace="ratesetter/base :: html(
+    title='Расчет зарплаты сотрудника',
+    icon='bi-person-badge',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <a th:href="@{/ratesetter/calculations(month=${month}, year=${year})}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+        <button class="btn btn-outline-primary" onclick="window.print()">
+            <i class="bi bi-printer"></i> Печать
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Информация о сотруднике</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ФИО:</strong> <span th:text="${employee.fullName}"></span></p>
+                    <p><strong>Должность:</strong> <span th:text="${employee.position.title}"></span></p>
+                    <p><strong>Базовый оклад:</strong> <span th:text="${employee.position.baseSalary} + ' руб.'"></span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Отдел:</strong> <span th:text="${employee.department.name}"></span></p>
+                    <p><strong>Период расчета:</strong>
+                        <span th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></span>
+                    </p>
+                    <p><strong>Статус:</strong>
+                        <span th:if="${employee.terminationDate == null}" class="badge bg-success">Активен</span>
+                        <span th:unless="${employee.terminationDate == null}" class="badge bg-secondary">Уволен</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-coin fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего начислено</h6>
+                    <h3 th:text="${totalAccruals} + ' руб.'">0 руб.</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-down-circle fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего удержано</h6>
+                    <h3 th:text="${totalDeductions} + ' руб.'">0 руб.</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-wallet2 fs-1 mb-2"></i>
+                    <h6 class="card-title">К выплате</h6>
+                    <h3 th:text="${netSalary} + ' руб.'">0 руб.</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детализация расчетов -->
+    <div class="row">
+        <!-- Начисления -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-plus-circle text-success"></i> Начисления
+                    </h5>
+                    <button class="btn btn-success btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#addAccrualModal">
+                        <i class="bi bi-plus"></i> Добавить
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                            <tr>
+                                <th>Тип</th>
+                                <th>Сумма</th>
+                                <th>Описание</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <!-- Исправленный синтаксис -->
+                            <tr th:each="payment : ${payments}"
+                                th:if="${payment.paymentType.category == 'accrual'}">
+                                <td th:text="${payment.paymentType.name}"></td>
+                                <td class="text-success fw-bold" th:text="'+' + ${payment.amount} + ' руб.'"></td>
+                                <td th:text="${payment.description}" class="small"></td>
+                                <td>
+                                    <form th:action="@{/ratesetter/calculations/{id}/delete(id=${payment.id})}"
+                                          method="post" style="display: inline;">
+                                        <input type="hidden" name="month" th:value="${month}">
+                                        <input type="hidden" name="year" th:value="${year}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                onclick="return confirm('Удалить эту запись?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Исправленный синтаксис для проверки пустого списка -->
+                            <tr th:if="${#lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'accrual'}))}">
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    <i class="bi bi-info-circle"></i> Начисления отсутствуют
+                                </td>
+                            </tr>
+                            </tbody>
+                            <!-- Исправленный синтаксис для футера -->
+                            <tfoot th:if="${not #lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'accrual'}))}">
+                            <tr class="table-success fw-bold">
+                                <td>Итого начислений:</td>
+                                <td th:text="'+' + ${totalAccruals} + ' руб.'"></td>
+                                <td colspan="2"></td>
+                            </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Удержания -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-dash-circle text-danger"></i> Удержания
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                            <tr>
+                                <th>Тип</th>
+                                <th>Сумма</th>
+                                <th>Описание</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="payment : ${payments}"
+                                th:if="${payment.paymentType.category == 'deduction'}">
+                                <td th:text="${payment.paymentType.name}"></td>
+                                <td class="text-danger fw-bold" th:text="'-' + ${payment.amount.abs()} + ' руб.'"></td>
+                                <td th:text="${payment.description}" class="small"></td>
+                                <td>
+                                    <form th:action="@{/ratesetter/calculations/{id}/delete(id=${payment.id})}"
+                                          method="post" style="display: inline;">
+                                        <input type="hidden" name="month" th:value="${month}">
+                                        <input type="hidden" name="year" th:value="${year}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                onclick="return confirm('Удалить эту запись?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Исправленный синтаксис -->
+                            <tr th:if="${#lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'deduction'}))}">
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    <i class="bi bi-info-circle"></i> Удержания отсутствуют
+                                </td>
+                            </tr>
+                            </tbody>
+                            <!-- Исправленный синтаксис -->
+                            <tfoot th:if="${not #lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'deduction'}))}">
+                            <tr class="table-danger fw-bold">
+                                <td>Итого удержаний:</td>
+                                <td th:text="'-' + ${totalDeductions} + ' руб.'"></td>
+                                <td colspan="2"></td>
+                            </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calculator"></i> Итоговый расчет
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h6>Начисления</h6>
+                            <h3 class="text-success" th:text="${totalAccruals} + ' руб.'"></h3>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Удержания</h6>
+                            <h3 class="text-danger" th:text="'-' + ${totalDeductions} + ' руб.'"></h3>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>К выплате</h6>
+                            <h3 class="text-primary" th:text="${netSalary} + ' руб.'"></h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addAccrualModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить начисление</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/ratesetter/calculations/bonus}" method="post">
+                <input type="hidden" name="employeeId" th:value="${employee.id}">
+                <input type="hidden" name="month" th:value="${month}">
+                <input type="hidden" name="year" th:value="${year}">
+
+                <div class="modal-body">
+                    <p>Сотрудник: <strong th:text="${employee.fullName}"></strong></p>
+
+                    <div class="mb-3">
+                        <label for="paymentTypeId" class="form-label">Тип начисления</label>
+                        <select class="form-select" id="paymentTypeId" name="paymentTypeId" required>
+                            <option value="">Выберите тип начисления</option>
+                            <option th:each="bonusType : ${bonusTypes}"
+                                    th:value="${bonusType.id}"
+                                    th:text="${bonusType.name}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Сумма (руб.)</label>
+                        <input type="number" class="form-control" id="amount" name="amount"
+                               step="0.01" min="0" required placeholder="0.00">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description"
+                                  rows="3" placeholder="Основание для начисления..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+
+        function confirmDelete(message) {
+            return confirm(message || 'Вы уверены, что хотите удалить эту запись?');
+        }
+    </script>
+</div>
+</body>
+</html>

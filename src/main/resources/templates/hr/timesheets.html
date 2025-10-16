@@ -177,15 +177,14 @@
                                             </span>
                                 </td>
                                 <td>
-                                            <span th:if="${timesheet.status == 'CONFIRMED'}"
+                                            <span th:if="${timesheet.status.name() == 'CONFIRMED'}"
                                                   class="badge bg-success">
                                                 <i class="bi bi-check-circle"></i> Подтверждён
                                             </span>
-                                    <span th:unless="${timesheet.status == 'CONFIRMED'}"
-                                          class="badge bg-warning">
+                                            <span th:unless="${timesheet.status.name() == 'CONFIRMED'}"
+                                                  class="badge bg-warning">
                                                 <i class="bi bi-pencil"></i> Черновик
                                             </span>
-                                </td>
                                 <td>
                                             <span th:if="${timesheet.confirmedAt != null}"
                                                   th:text="${#temporals.format(timesheet.confirmedAt, 'dd.MM.yyyy HH:mm')}">

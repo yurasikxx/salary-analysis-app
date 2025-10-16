@@ -29,19 +29,31 @@ public class EmployeeService {
         return employeeRepository.findById(id);
     }
 
+    public List<Employee> getActiveEmployees() {
+        return employeeRepository.findByTerminationDateIsNull();
+    }
+
+    public List<Employee> getActiveEmployeesByDepartment(Integer departmentId) {
+        return employeeRepository.findByDepartmentIdAndTerminationDateIsNull(departmentId);
+    }
+
+    public List<Employee> getEmployeesByDepartment(Department department) {
+        return employeeRepository.findByDepartment(department);
+    }
+
     public List<Employee> searchEmployeesByName(String name) {
         return employeeRepository.findByFullNameContainingIgnoreCase(name);
     }
 
-    public Employee createEmployee(String fullName, LocalDate hireDate,
-                                   Position position, Department department) {
+    public void createEmployee(String fullName, LocalDate hireDate,
+                               Position position, Department department) {
         Employee employee = new Employee();
         employee.setFullName(fullName);
         employee.setHireDate(hireDate);
         employee.setPosition(position);
         employee.setDepartment(department);
 
-        return employeeRepository.save(employee);
+        employeeRepository.save(employee);
     }
 
     public Employee updateEmployee(Integer id, String fullName, Position position,
@@ -64,7 +76,15 @@ public class EmployeeService {
         employeeRepository.save(employee);
     }
 
+    public long getActiveEmployeeCount() {
+        return employeeRepository.countByTerminationDateIsNull();
+    }
+
     public long getEmployeeCountByDepartment(Department department) {
-        return employeeRepository.findByDepartment(department).size();
+        return employeeRepository.countByDepartment(department);
+    }
+
+    public List<Employee> findByPosition(Position position) {
+        return employeeRepository.findByPosition(position);
     }
 }
