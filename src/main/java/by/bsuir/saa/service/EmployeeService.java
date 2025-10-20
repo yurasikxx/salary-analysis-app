@@ -87,4 +87,8 @@ public class EmployeeService {
     public List<Employee> findByPosition(Position position) {
         return employeeRepository.findByPosition(position);
     }
+
+    public Long getNewEmployeesCount(LocalDate sinceDate) {
+        return employeeRepository.countByHireDateAfter(sinceDate);
+    }
 }

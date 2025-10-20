@@ -23,17 +23,50 @@ public class RatesetterController {
     private final PaymentRepository paymentRepository;
     private final PaymentTypeService paymentTypeService;
     private final DepartmentService departmentService;
+    private final PaymentService paymentService;
 
     public RatesetterController(EmployeeService employeeService,
                                 SalaryCalculationService salaryCalculationService,
                                 PaymentRepository paymentRepository,
                                 PaymentTypeService paymentTypeService,
-                                DepartmentService departmentService) {
+                                DepartmentService departmentService,
+                                PaymentService paymentService) {
         this.employeeService = employeeService;
         this.salaryCalculationService = salaryCalculationService;
         this.paymentRepository = paymentRepository;
         this.paymentTypeService = paymentTypeService;
         this.departmentService = departmentService;
+        this.paymentService = paymentService;
+    }
+
+    @GetMapping("/dashboard")
+    public String dashboard(@RequestParam(defaultValue = "9") Integer month,
+                            @RequestParam(defaultValue = "2025") Integer year,
+                            Model model) {
+
+        model.addAttribute("title", "Дашборд нормировщика");
+        model.addAttribute("icon", "bi-calculator");
+        model.addAttribute("month", month);
+        model.addAttribute("year", year);
+
+        // Статистика для дашборда
+        long totalEmployees = employeeService.getActiveEmployees().size();
+        long employeesWithCalculations = paymentService.getEmployeesWithCalculationsCount(month, year);
+
+        BigDecimal totalAccruals = paymentService.getTotalAccruals(month, year);
+        BigDecimal averageAccrual = totalEmployees > 0 ?
+                totalAccruals.divide(BigDecimal.valueOf(totalEmployees), 2, java.math.RoundingMode.HALF_UP) :
+                BigDecimal.ZERO;
+
+        model.addAttribute("totalEmployees", totalEmployees);
+        model.addAttribute("employeesWithCalculations", employeesWithCalculations);
+        model.addAttribute("employeesWithoutCalculations", totalEmployees - employeesWithCalculations);
+        model.addAttribute("totalAccruals", totalAccruals);
+        model.addAttribute("averageAccrual", averageAccrual);
+        model.addAttribute("completionRate", totalEmployees > 0 ?
+                (employeesWithCalculations * 100 / totalEmployees) : 0);
+
+        return "ratesetter/dashboard";
     }
 
     @GetMapping("/calculations")

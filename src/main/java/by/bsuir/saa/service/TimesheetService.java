@@ -111,4 +111,12 @@ public class TimesheetService {
     public void deleteTimesheet(Integer timesheetId) {
         timesheetRepository.deleteById(timesheetId);
     }
+
+    public Long getConfirmedTimesheetsCount(Integer month, Integer year) {
+        return timesheetRepository.countByMonthAndYearAndStatus(month, year, "confirmed");
+    }
+
+    public Long getPendingTimesheetsCount(Integer month, Integer year) {
+        return timesheetRepository.countByMonthAndYearAndStatus(month, year, "draft");
+    }
 }

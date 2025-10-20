@@ -73,4 +73,8 @@ public class PaymentService {
     public void deletePayment(Integer paymentId) {
         paymentRepository.deleteById(paymentId);
     }
+
+    public Long getEmployeesWithCalculationsCount(Integer month, Integer year) {
+        return paymentRepository.countDistinctEmployeesByMonthAndYear(month, year);
+    }
 }

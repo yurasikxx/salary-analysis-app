@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Динамика зарплат - Аналитик - Аналитика заработной платы</title>
+</head>
+<body th:replace="analyst/base :: html(
+    title='Динамика заработных плат',
+    icon='bi-graph-up',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-success" onclick="loadDynamicsData()">
+            <i class="bi bi-arrow-clockwise"></i> Обновить график
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/salary-dynamics}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Отдел</label>
+                    <select class="form-select" name="departmentId">
+                        <option value="">Выберите отдел</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}"
+                                th:selected="${departmentId == dept.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">С месяца</label>
+                    <select class="form-select" name="startMonth">
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${startMonth == m}"
+                                th:text="${#temporals.format(#temporals.create(2025, m, 1), 'MMMM')}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Год</label>
+                    <input type="number" class="form-control" name="startYear" th:value="${startYear}" min="2020"
+                           max="2030">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">По месяц</label>
+                    <select class="form-select" name="endMonth">
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${endMonth == m}"
+                                th:text="${#temporals.format(#temporals.create(2025, m, 1), 'MMMM')}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Год</label>
+                    <input type="number" class="form-control" name="endYear" th:value="${endYear}" min="2020"
+                           max="2030">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- График динамики -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-graph-up"></i>
+                <span th:if="${dynamicsData}">Динамика зарплат в отделе: <span
+                        th:text="${dynamicsData.departmentName}"></span></span>
+                <span th:unless="${dynamicsData}">Динамика зарплат</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="dynamicsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div th:if="${dynamicsData}" class="row">
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Период анализа</h6>
+                    <h4 th:text="${startMonth + '.' + startYear + ' - ' + endMonth + '.' + endYear}"></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Макс. средняя зарплата</h6>
+                    <h4 th:text="${'₽' + #numbers.formatDecimal(#aggregates.max(dynamicsData.averageSalaries), 1, 2)}"></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Минимальная средняя зарплата</h6>
+                    <h4 th:text="${'₽' + #numbers.formatDecimal(#aggregates.min(dynamicsData.averageSalaries), 1, 2)}"></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Изменение за период</h6>
+                    <h4 th:if="${#lists.size(dynamicsData.averageSalaries) >= 2}"
+                        th:text="${'₽' + #numbers.formatDecimal(#lists.get(dynamicsData.averageSalaries, #lists.size(dynamicsData.averageSalaries)-1) - #lists.get(dynamicsData.averageSalaries, 0), 1, 2)}">
+                    </h4>
+                    <h4 th:unless="${#lists.size(dynamicsData.averageSalaries) >= 2}">—</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:unless="${dynamicsData}" class="text-center text-muted py-5">
+        <i class="bi bi-graph-up display-1"></i>
+        <h4 class="mt-3">Выберите отдел для анализа динамики</h4>
+        <p>Для отображения графика динамики заработных плат выберите отдел и период анализа</p>
+    </div>
+</div>
+
+<div id="scripts">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        let dynamicsChart = null;
+
+        function initDynamicsChart() {
+            const ctx = document.getElementById('dynamicsChart').getContext('2d');
+            const dynamicsData = /*[[${dynamicsData}]]*/ null;
+
+            if (!dynamicsData || !dynamicsData.labels || dynamicsData.labels.length === 0) {
+                showNoData(ctx, 'dynamicsChart');
+                return;
+            }
+
+            if (dynamicsChart) {
+                dynamicsChart.destroy();
+            }
+
+            dynamicsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dynamicsData.labels,
+                    datasets: [
+                        {
+                            label: 'Средняя зарплата (руб.)',
+                            data: dynamicsData.averageSalaries,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Количество сотрудников',
+                            data: dynamicsData.employeeCounts,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Средняя зарплата (руб.)'
+                            },
+                            ticks: {
+                                callback: function (value) {
+                                    return '₽' + value.toLocaleString('ru-RU');
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Количество сотрудников'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y1') {
+                                        label += context.parsed.y + ' чел.';
+                                    } else {
+                                        label += '₽' + context.parsed.y.toLocaleString('ru-RU');
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadDynamicsData() {
+            const departmentId = /*[[${departmentId}]]*/ null;
+            const startMonth = /*[[${startMonth}]]*/ 1;
+            const startYear = /*[[${startYear}]]*/ 2025;
+            const endMonth = /*[[${endMonth}]]*/ 9;
+            const endYear = /*[[${endYear}]]*/ 2025;
+
+            if (!departmentId) {
+                alert('Выберите отдел для анализа');
+                return;
+            }
+
+            // Здесь можно добавить AJAX загрузку данных
+            window.location.href = `/analyst/salary-dynamics?departmentId=${departmentId}&startMonth=${startMonth}&startYear=${startYear}&endMonth=${endMonth}&endYear=${endYear}`;
+        }
+
+        function showNoData(ctx, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#6c757d';
+            ctx.textAlign = 'center';
+            ctx.fillText('Нет данных для отображения', canvas.width / 2, canvas.height / 2);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initDynamicsChart();
+        });
+
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

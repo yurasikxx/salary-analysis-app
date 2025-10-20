@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система расчета заработной платы</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 0;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+    </style>
+</head>
+<body>
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" th:href="@{/}">
+            <i class="bi bi-graph-up"></i> Salary Analysis System
+        </a>
+        <div class="navbar-nav ms-auto">
+            <a th:href="@{/login}" class="btn btn-outline-light">Войти в систему</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Герой секция -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Система расчета и анализа заработной платы</h1>
+                <p class="lead mb-4">Автоматизация процессов расчета заработной платы, управление персоналом и аналитика
+                    в реальном времени</p>
+                <a th:href="@{/login}" class="btn btn-light btn-lg">
+                    <i class="bi bi-box-arrow-in-right"></i> Начать работу
+                </a>
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="bi bi-graph-up-arrow display-1"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Функциональность -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="display-5 fw-bold">Возможности системы</h2>
+                <p class="lead text-muted">Комплексное решение для управления заработной платой</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-icon">
+                    <i class="bi bi-calculator text-white fs-4"></i>
+                </div>
+                <h4>Автоматический расчет</h4>
+                <p class="text-muted">Расчет основной зарплаты, премий, надбавок и удержаний по установленным
+                    правилам</p>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-icon">
+                    <i class="bi bi-bar-chart text-white fs-4"></i>
+                </div>
+                <h4>Детальная аналитика</h4>
+                <p class="text-muted">Визуализация данных, анализ динамики зарплат и сравнение показателей по
+                    отделам</p>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-icon">
+                    <i class="bi bi-shield-check text-white fs-4"></i>
+                </div>
+                <h4>Безопасность данных</h4>
+                <p class="text-muted">Ролевая модель доступа и защита конфиденциальной информации о зарплатах</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Роли пользователей -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="display-5 fw-bold">Для кого предназначена система</h2>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="bi bi-person-badge text-primary fs-1"></i>
+                        <h5 class="card-title mt-3">Кадровая служба</h5>
+                        <p class="card-text">Управление персоналом, табельный учет и кадровый документооборот</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="bi bi-calculator text-success fs-1"></i>
+                        <h5 class="card-title mt-3">Нормировщики</h5>
+                        <p class="card-text">Расчет основной заработной платы, премий и надбавок сотрудникам</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="bi bi-cash-coin text-warning fs-1"></i>
+                        <h5 class="card-title mt-3">Бухгалтерия</h5>
+                        <p class="card-text">Расчет налогов и удержаний, формирование отчетности и ведомостей</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="bi bi-graph-up text-info fs-1"></i>
+                        <h5 class="card-title mt-3">Аналитики</h5>
+                        <p class="card-text">Анализ динамики зарплат, визуализация данных и выявление тенденций</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Футер -->
+<footer class="bg-dark text-white py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="bi bi-graph-up"></i> Salary Analysis System</h5>
+                <p class="mb-0">Система расчета и анализа заработной платы</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <p class="mb-0">&copy; 2025 БГУИР. Все права защищены.</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

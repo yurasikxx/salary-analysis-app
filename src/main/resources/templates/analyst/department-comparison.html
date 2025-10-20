@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Сравнение отделов - Аналитик - Аналитика заработной платы</title>
+</head>
+<body th:replace="analyst/base :: html(
+    title='Сравнение отделов',
+    icon='bi-bar-chart',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
+            <option th:each="m : ${#numbers.sequence(1,12)}"
+                    th:value="${m + ',' + year}"
+                    th:selected="${month == m}"
+                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM yyyy')}">
+            </option>
+        </select>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/department-comparison}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${month == m}"
+                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option value="2024" th:selected="${year == 2024}">2024</option>
+                        <option value="2025" th:selected="${year == 2025}">2025</option>
+                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Графики сравнения -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart"></i> Средняя зарплата по отделам
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="avgSalaryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart"></i> Распределение ФОТ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="fotDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детальная таблица -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-table"></i> Детальная статистика по отделам
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>Отдел</th>
+                        <th>Сотрудников</th>
+                        <th>Средняя зарплата</th>
+                        <th>Общий ФОТ</th>
+                        <th>Доля в общем ФОТ</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="dept, iter : ${comparisonData.departments}">
+                        <td th:text="${dept}"></td>
+                        <td th:text="${comparisonData.employeeCounts[iter.index]}"></td>
+                        <td>
+                            <strong th:text="${'₽' + #numbers.formatDecimal(comparisonData.averageSalaries[iter.index], 1, 2)}"></strong>
+                        </td>
+                        <td th:text="${'₽' + #numbers.formatDecimal(comparisonData.totalFOT[iter.index], 1, 2)}"></td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar"
+                                     th:styleappend="'width: ' + ${comparisonData.totalFOT[iter.index].divide(#lists.get(comparisonData.totalFOT, 0), 4, java.math.RoundingMode.HALF_UP) * 100} + '%;'"
+                                     th:text="${#numbers.formatDecimal(comparisonData.totalFOT[iter.index].divide(#lists.get(comparisonData.totalFOT, 0), 4, java.math.RoundingMode.HALF_UP) * 100, 1, 1) + '%'}">
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        // График средней зарплаты
+        function initAvgSalaryChart() {
+            const ctx = document.getElementById('avgSalaryChart').getContext('2d');
+            const departments = /*[[${comparisonData.departments}]]*/ [];
+            const avgSalaries = /*[[${comparisonData.averageSalaries}]]*/ [];
+
+            if (departments.length === 0) {
+                showNoData(ctx, 'avgSalaryChart');
+                return;
+            }
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: departments,
+                    datasets: [{
+                        label: 'Средняя зарплата (руб.)',
+                        data: avgSalaries,
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return '₽' + value.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return 'Средняя зарплата: ₽' + context.parsed.y.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // График распределения ФОТ
+        function initFOTDistributionChart() {
+            const ctx = document.getElementById('fotDistributionChart').getContext('2d');
+            const departments = /*[[${comparisonData.departments}]]*/ [];
+            const fotData = /*[[${comparisonData.totalFOT}]]*/ [];
+
+            if (departments.length === 0) {
+                showNoData(ctx, 'fotDistributionChart');
+                return;
+            }
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: departments,
+                    datasets: [{
+                        data: fotData,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((context.parsed / total) * 100);
+                                    return `${context.label}: ₽${context.parsed.toLocaleString('ru-RU')} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function showNoData(ctx, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#6c757d';
+            ctx.textAlign = 'center';
+            ctx.fillText('Нет данных для отображения', canvas.width / 2, canvas.height / 2);
+        }
+
+        function changePeriod() {
+            const select = document.getElementById('periodSelect');
+            const [month, year] = select.value.split(',');
+            window.location.href = '/analyst/department-comparison?month=' + month + '&year=' + year;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initAvgSalaryChart();
+            initFOTDistributionChart();
+        });
+
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

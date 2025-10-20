@@ -225,4 +225,42 @@ public class AnalyticsService {
                 .map(Department::getName)
                 .orElse("Неизвестный отдел");
     }
+
+    public Map<String, Object> getDepartmentComparisonWithStats(Integer month, Integer year) {
+        Map<String, Object> result = new HashMap<>();
+
+        List<Department> allDepartments = departmentRepository.findAll();
+        List<String> departments = new ArrayList<>();
+        List<BigDecimal> averageSalaries = new ArrayList<>();
+        List<BigDecimal> totalFOT = new ArrayList<>();
+        List<Long> employeeCounts = new ArrayList<>();
+
+        BigDecimal companyTotalFOT = BigDecimal.ZERO;
+
+        for (Department department : allDepartments) {
+            BigDecimal avgSalary = salaryPaymentRepository
+                    .findAverageSalaryByDepartmentAndPeriod(department.getId(), month, year);
+            BigDecimal fot = salaryPaymentRepository
+                    .findTotalFOTByDepartmentAndPeriod(department.getId(), month, year);
+            Long empCount = salaryPaymentRepository
+                    .findEmployeeCountByDepartmentAndPeriod(department.getId(), month, year);
+
+            if (empCount > 0) {
+                departments.add(department.getName());
+                averageSalaries.add(avgSalary.setScale(2, RoundingMode.HALF_UP));
+                totalFOT.add(fot.setScale(2, RoundingMode.HALF_UP));
+                employeeCounts.add(empCount);
+                companyTotalFOT = companyTotalFOT.add(fot);
+            }
+        }
+
+        result.put("departments", departments);
+        result.put("averageSalaries", averageSalaries);
+        result.put("totalFOT", totalFOT);
+        result.put("employeeCounts", employeeCounts);
+        result.put("companyTotalFOT", companyTotalFOT);
+        result.put("period", month + "/" + year);
+
+        return result;
+    }
 }

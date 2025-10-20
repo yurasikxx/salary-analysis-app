@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Дашборд - Аналитик - Аналитика заработной платы</title>
+</head>
+<body th:replace="analyst/base :: html(
+    title='Аналитическая панель',
+    icon='bi-speedometer2',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
+            <option th:each="m : ${#numbers.sequence(1,12)}"
+                    th:value="${m + ',' + year}"
+                    th:selected="${month == m}"
+                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM yyyy')}">
+            </option>
+        </select>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Заголовок с общей статистикой -->
+    <div class="analytics-header mb-4">
+        <div class="row">
+            <div class="col-md-8">
+                <h1 class="display-6">Аналитическая панель</h1>
+                <p class="lead mb-0">Комплексный анализ заработных плат и финансовых показателей</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
+                <p class="mb-0">Период анализа</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ключевые метрики -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Общий ФОТ</h6>
+                            <h3 th:text="${'₽' + #numbers.formatDecimal(companyStats.totalFOT, 1, 2)}">₽0</h3>
+                        </div>
+                        <i class="bi bi-cash-coin fs-1 opacity-50"></i>
+                    </div>
+                    <p class="card-text mb-0">Фонд оплаты труда компании</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Средняя зарплата</h6>
+                            <h3 th:text="${'₽' + #numbers.formatDecimal(companyStats.averageSalary, 1, 2)}">₽0</h3>
+                        </div>
+                        <i class="bi bi-graph-up fs-1 opacity-50"></i>
+                    </div>
+                    <p class="card-text mb-0">По компании в целом</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Сотрудников</h6>
+                            <h3 th:text="${companyStats.totalEmployees}">0</h3>
+                        </div>
+                        <i class="bi bi-people fs-1 opacity-50"></i>
+                    </div>
+                    <p class="card-text mb-0">Всего в компании</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Отделов</h6>
+                            <h3 th:text="${companyStats.departmentCount}">0</h3>
+                        </div>
+                        <i class="bi bi-building fs-1 opacity-50"></i>
+                    </div>
+                    <p class="card-text mb-0">Всего отделов</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- График сравнения отделов -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart"></i> Сравнение отделов по средней зарплате
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="departmentComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Топ сотрудников -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-trophy"></i> Топ-5 сотрудников
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div th:each="emp, iter : ${topEmployees}"
+                             class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong th:text="${emp.name}"></strong>
+                                <br>
+                                <small class="text-muted" th:text="${emp.department}"></small>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">
+                                ₽<span th:text="${#numbers.formatDecimal(emp.salary, 1, 2)}"></span>
+                            </span>
+                        </div>
+                        <div th:if="${#lists.isEmpty(topEmployees)}" class="list-group-item text-center text-muted">
+                            <i class="bi bi-info-circle"></i> Нет данных за выбранный период
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрый доступ к отчетам -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Быстрый доступ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2 text-center mb-3">
+                            <a th:href="@{/templates/analyst/department-comparison.html(month=${month}, year=${year})}"
+                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-bar-chart fs-1 mb-2"></i>
+                                <span>Сравнение</span>
+                            </a>
+                        </div>
+                        <div class="col-md-2 text-center mb-3">
+                            <a th:href="@{/analyst/salary-dynamics(month=${month}, year=${year})}"
+                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-graph-up fs-1 mb-2"></i>
+                                <span>Динамика</span>
+                            </a>
+                        </div>
+                        <div class="col-md-2 text-center mb-3">
+                            <a th:href="@{/analyst/payment-structure(month=${month}, year=${year})}"
+                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-pie-chart fs-1 mb-2"></i>
+                                <span>Структура</span>
+                            </a>
+                        </div>
+                        <div class="col-md-2 text-center mb-3">
+                            <a th:href="@{/analyst/top-employees(month=${month}, year=${year})}"
+                               class="btn btn-outline-warning btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-trophy fs-1 mb-2"></i>
+                                <span>Топы</span>
+                            </a>
+                        </div>
+                        <div class="col-md-2 text-center mb-3">
+                            <a th:href="@{/analyst/trend-analysis(month=${month}, year=${year})}"
+                               class="btn btn-outline-danger btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-arrow-trend-up fs-1 mb-2"></i>
+                                <span>Тренды</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        // Инициализация графика сравнения отделов
+        function initDepartmentComparisonChart() {
+            const ctx = document.getElementById('departmentComparisonChart').getContext('2d');
+
+            // Правильное получение данных из Thymeleaf
+            const departments = /*[[${departmentComparison.departments}]]*/ [];
+            const averageSalaries = /*[[${departmentComparison.averageSalaries}]]*/ [];
+
+            // Проверяем, есть ли данные
+            if (!departments || departments.length === 0) {
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#6c757d';
+                ctx.textAlign = 'center';
+                ctx.fillText('Нет данных для отображения', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: departments,
+                    datasets: [{
+                        label: 'Средняя зарплата (руб.)',
+                        data: averageSalaries,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(255, 205, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(153, 102, 255, 0.8)',
+                            'rgba(255, 159, 64, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 205, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₽' + value.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Средняя зарплата: ₽' + context.parsed.y.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Смена периода
+        function changePeriod() {
+            const select = document.getElementById('periodSelect');
+            const [month, year] = select.value.split(',');
+            window.location.href = '/analyst/dashboard?month=' + month + '&year=' + year;
+        }
+
+        // Автоматическое закрытие алертов
+        document.addEventListener('DOMContentLoaded', function() {
+            initDepartmentComparisonChart();
+
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

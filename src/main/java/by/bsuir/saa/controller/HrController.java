@@ -39,6 +39,36 @@ public class HrController {
         this.markTypeService = markTypeService;
     }
 
+    @GetMapping("/dashboard")
+    public String dashboard(@RequestParam(defaultValue = "9") Integer month,
+                            @RequestParam(defaultValue = "2025") Integer year,
+                            Model model) {
+
+        model.addAttribute("title", "Дашборд кадровой службы");
+        model.addAttribute("icon", "bi-person-badge");
+        model.addAttribute("month", month);
+        model.addAttribute("year", year);
+
+        // Статистика для дашборда
+        long totalEmployees = employeeService.getActiveEmployees().size();
+        long totalDepartments = departmentService.getAllDepartments().size();
+        long timesheetsConfirmed = timesheetService.getConfirmedTimesheetsCount(month, year);
+        long timesheetsPending = timesheetService.getPendingTimesheetsCount(month, year);
+
+        // Новые сотрудники за последние 30 дней
+        long newEmployees = employeeService.getNewEmployeesCount(LocalDate.now().minusDays(30));
+
+        model.addAttribute("totalEmployees", totalEmployees);
+        model.addAttribute("totalDepartments", totalDepartments);
+        model.addAttribute("timesheetsConfirmed", timesheetsConfirmed);
+        model.addAttribute("timesheetsPending", timesheetsPending);
+        model.addAttribute("newEmployees", newEmployees);
+        model.addAttribute("timesheetCompletionRate", totalEmployees > 0 ?
+                (timesheetsConfirmed * 100 / totalEmployees) : 0);
+
+        return "hr/dashboard";
+    }
+
     @GetMapping("/employees")
     public String employeesPage(Model model) {
         List<Employee> employees = employeeService.getAllEmployees();

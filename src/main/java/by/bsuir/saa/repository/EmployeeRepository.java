@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -37,5 +38,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
 
     @Query("SELECT COUNT(e) FROM Employee e WHERE e.department.id = :departmentId AND e.terminationDate IS NULL")
     long countByDepartmentId(@Param("departmentId") Integer departmentId);
+
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.hireDate > :sinceDate AND e.terminationDate IS NULL")
+    Long countByHireDateAfter(@Param("sinceDate") LocalDate sinceDate);
+
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.terminationDate IS NULL")
+    Long countActiveEmployees();
 
 }

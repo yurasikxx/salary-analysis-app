@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -84,4 +85,24 @@ public interface SalaryPaymentRepository extends JpaRepository<SalaryPayment, In
             "WHERE sp.month = :month AND sp.year = :year " +
             "GROUP BY sp.employee.department.name")
     List<Object[]> findDepartmentSummary(@Param("month") Integer month, @Param("year") Integer year);
+
+
+    @Query("SELECT new map(d.name as departmentName, AVG(sp.netSalary) as avgSalary, " +
+            "SUM(sp.netSalary) as totalFOT, COUNT(sp) as employeeCount) " +
+            "FROM SalaryPayment sp " +
+            "JOIN sp.employee e " +
+            "JOIN e.department d " +
+            "WHERE sp.month = :month AND sp.year = :year " +
+            "GROUP BY d.id, d.name " +
+            "ORDER BY AVG(sp.netSalary) DESC")
+    List<Map<String, Object>> findDepartmentStatsForPeriod(@Param("month") Integer month,
+                                                           @Param("year") Integer year);
+
+    @Query("SELECT sp FROM SalaryPayment sp " +
+            "WHERE sp.month = :month AND sp.year = :year " +
+            "ORDER BY sp.netSalary DESC " +
+            "LIMIT :limit")
+    List<SalaryPayment> findTopByMonthAndYearOrderByNetSalaryDesc(@Param("month") Integer month,
+                                                                  @Param("year") Integer year,
+                                                                  @Param("limit") Integer limit);
 }

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Дашборд нормировщика - Расчёт и анализ заработной платы</title>
+</head>
+<body th:replace="layout :: html(
+    title='Дашборд нормировщика',
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="content">
+    <!-- Заголовок -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h1 class="display-6"><i class="bi bi-calculator"></i> Дашборд нормировщика</h1>
+                            <p class="lead mb-0">Управление расчетами основной заработной платы, премий и надбавок</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
+                            <p class="mb-0">Расчетный период</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ключевые метрики -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего сотрудников</h6>
+                    <h3 th:text="${totalEmployees}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle fs-1 mb-2"></i>
+                    <h6 class="card-title">С расчетами</h6>
+                    <h3 th:text="${employeesWithCalculations}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-clock fs-1 mb-2"></i>
+                    <h6 class="card-title">Ожидают расчета</h6>
+                    <h3 th:text="${employeesWithoutCalculations}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <i class="bi bi-percent fs-1 mb-2"></i>
+                    <h6 class="card-title">Выполнено</h6>
+                    <h3 th:text="${completionRate + '%'}">0%</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Финансовые показатели -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cash-coin"></i> Финансовые показатели
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-6">
+                            <h6>Общая сумма начислений</h6>
+                            <h3 th:text="${'₽' + #numbers.formatDecimal(totalAccruals, 1, 2)}"
+                                class="text-primary"></h3>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Среднее начисление</h6>
+                            <h3 th:text="${'₽' + #numbers.formatDecimal(averageAccrual, 1, 2)}"
+                                class="text-success"></h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-speedometer2"></i> Прогресс расчета
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress" style="height: 30px;">
+                        <div class="progress-bar bg-success"
+                             th:styleappend="'width: ' + ${completionRate} + '%;'"
+                             th:text="${completionRate} + '%'">
+                        </div>
+                    </div>
+                    <div class="row mt-2 text-center">
+                        <div class="col-md-6">
+                            <small class="text-muted">Выполнено: <span
+                                    th:text="${employeesWithCalculations}"></span></small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Осталось: <span th:text="${employeesWithoutCalculations}"></span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрый доступ -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Быстрый доступ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/ratesetter/calculations(month=${month}, year=${year})}"
+                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-calculator fs-1 mb-2"></i>
+                                <span>Расчет начислений</span>
+                            </a>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/ratesetter/reports(month=${month}, year=${year})}"
+                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-file-text fs-1 mb-2"></i>
+                                <span>Отчеты</span>
+                            </a>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/hr/employees}"
+                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-person-badge fs-1 mb-2"></i>
+                                <span>Справочник сотрудников</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние действия -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Последние расчеты
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th>Отдел</th>
+                                <th>Тип начисления</th>
+                                <th class="text-end">Сумма</th>
+                                <th>Дата</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    <i class="bi bi-info-circle"></i> Интеграция с журналом расчетов в разработке
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Автоматическое закрытие алертов
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

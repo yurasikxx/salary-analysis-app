@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Топ сотрудников - Аналитик - Аналитика заработной платы</title>
+</head>
+<body th:replace="analyst/base :: html(
+    title='Топ сотрудников по зарплате',
+    icon='bi-trophy',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <select class="form-select form-select-sm" id="limitSelect" onchange="changeLimit()">
+            <option value="5" th:selected="${limit == 5}">Топ-5</option>
+            <option value="10" th:selected="${limit == 10}">Топ-10</option>
+            <option value="20" th:selected="${limit == 20}">Топ-20</option>
+        </select>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/top-employees}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${month == m}"
+                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option value="2024" th:selected="${year == 2024}">2024</option>
+                        <option value="2025" th:selected="${year == 2025}">2025</option>
+                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Количество</label>
+                    <select class="form-select" name="limit">
+                        <option value="5" th:selected="${limit == 5}">Топ-5</option>
+                        <option value="10" th:selected="${limit == 10}">Топ-10</option>
+                        <option value="20" th:selected="${limit == 20}">Топ-20</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- График топ сотрудников -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-bar-chart"></i> Топ-<span th:text="${limit}"></span> сотрудников по зарплате
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="topEmployeesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица топ сотрудников -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-table"></i> Детальная информация
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                    <tr>
+                        <th width="5%">#</th>
+                        <th>Сотрудник</th>
+                        <th>Должность</th>
+                        <th>Отдел</th>
+                        <th class="text-end">Зарплата к выплате</th>
+                        <th class="text-end">Начисления</th>
+                        <th class="text-end">Удержания</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="emp, iter : ${topEmployees}">
+                        <td>
+                                <span th:if="${iter.index == 0}" class="badge bg-warning text-dark">
+                                    <i class="bi bi-trophy-fill"></i> 1
+                                </span>
+                            <span th:if="${iter.index == 1}" class="badge bg-secondary">
+                                    <i class="bi bi-award-fill"></i> 2
+                                </span>
+                            <span th:if="${iter.index == 2}" class="badge bg-danger">
+                                    <i class="bi bi-award"></i> 3
+                                </span>
+                            <span th:if="${iter.index > 2}" class="badge bg-light text-dark">
+                                    <span th:text="${iter.index + 1}"></span>
+                                </span>
+                        </td>
+                        <td>
+                            <strong th:text="${emp.name}"></strong>
+                        </td>
+                        <td th:text="${emp.position}"></td>
+                        <td th:text="${emp.department}"></td>
+                        <td class="text-end">
+                            <strong th:text="${'₽' + #numbers.formatDecimal(emp.salary, 1, 2)}"></strong>
+                        </td>
+                        <td class="text-end" th:text="${'₽' + #numbers.formatDecimal(emp.totalAccrued, 1, 2)}"></td>
+                        <td class="text-end" th:text="${'₽' + #numbers.formatDecimal(emp.totalDeducted, 1, 2)}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(topEmployees)}">
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-people display-4"></i>
+                            <p class="mt-2">Нет данных за выбранный период</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div th:if="${not #lists.isEmpty(topEmployees)}" class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Максимальная зарплата</h6>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(#aggregates.max(#lists.extract(topEmployees, 'salary')), 1, 2)}"></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Минимальная в топе</h6>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(#aggregates.min(#lists.extract(topEmployees, 'salary')), 1, 2)}"></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Средняя в топе</h6>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(#aggregates.avg(#lists.extract(topEmployees, 'salary')), 1, 2)}"></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Сумма ФОТ топа</h6>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(#aggregates.sum(#lists.extract(topEmployees, 'salary')), 1, 2)}"></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        function initTopEmployeesChart() {
+            const ctx = document.getElementById('topEmployeesChart').getContext('2d');
+            const topEmployees = /*[[${topEmployees}]]*/ [];
+
+            if (topEmployees.length === 0) {
+                showNoData(ctx, 'topEmployeesChart');
+                return;
+            }
+
+            const labels = topEmployees.map(emp => emp.name);
+            const salaries = topEmployees.map(emp => emp.salary);
+            const accruals = topEmployees.map(emp => emp.totalAccrued);
+            const deductions = topEmployees.map(emp => emp.totalDeducted);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Зарплата к выплате',
+                            data: salaries,
+                            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Начисления',
+                            data: accruals,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Удержания',
+                            data: deductions,
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return '₽' + value.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return context.dataset.label + ': ₽' + context.parsed.y.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function changeLimit() {
+            const select = document.getElementById('limitSelect');
+            const limit = select.value;
+            const month = /*[[${month}]]*/ 9;
+            const year = /*[[${year}]]*/ 2025;
+
+            window.location.href = '/analyst/top-employees?month=' + month + '&year=' + year + '&limit=' + limit;
+        }
+
+        function showNoData(ctx, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#6c757d';
+            ctx.textAlign = 'center';
+            ctx.fillText('Нет данных для отображения', canvas.width / 2, canvas.height / 2);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initTopEmployeesChart();
+        });
+
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

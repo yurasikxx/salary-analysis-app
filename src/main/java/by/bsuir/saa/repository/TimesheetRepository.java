@@ -26,4 +26,13 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Integer> {
 
     @Query("SELECT t FROM Timesheet t WHERE t.month = :month AND t.year = :year")
     List<Timesheet> findByMonthAndYear(@Param("month") Integer month, @Param("year") Integer year);
+
+    @Query("SELECT COUNT(t) FROM Timesheet t WHERE t.month = :month AND t.year = :year AND t.status = :status")
+    Long countByMonthAndYearAndStatus(@Param("month") Integer month,
+                                      @Param("year") Integer year,
+                                      @Param("status") String status);
+
+    @Query("SELECT COUNT(t) FROM Timesheet t WHERE t.month = :month AND t.year = :year")
+    Long countByMonthAndYear(@Param("month") Integer month,
+                             @Param("year") Integer year);
 }

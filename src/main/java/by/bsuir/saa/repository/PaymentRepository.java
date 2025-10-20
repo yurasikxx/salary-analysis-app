@@ -51,4 +51,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
             "AND p.paymentType.category = 'deduction' " +
             "GROUP BY p.paymentType.name")
     List<Object[]> findTaxDetailsByPeriod(@Param("month") Integer month, @Param("year") Integer year);
+
+    @Query("SELECT COUNT(DISTINCT p.employee.id) FROM Payment p WHERE p.month = :month AND p.year = :year")
+    Long countDistinctEmployeesByMonthAndYear(@Param("month") Integer month,
+                                              @Param("year") Integer year);
+
+    @Query("SELECT COUNT(DISTINCT p.employee.id) FROM Payment p WHERE p.month = :month AND p.year = :year AND p.paymentType.category = 'accrual'")
+    Long countEmployeesWithAccruals(@Param("month") Integer month,
+                                    @Param("year") Integer year);
 }

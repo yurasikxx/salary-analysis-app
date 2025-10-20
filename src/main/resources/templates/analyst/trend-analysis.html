@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Анализ трендов - Аналитик - Аналитика заработной платы</title>
+</head>
+<body th:replace="analyst/base :: html(
+    title='Анализ трендов',
+    icon='bi-arrow-trend-up',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-success" onclick="loadTrendData()">
+            <i class="bi bi-arrow-clockwise"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/trend-analysis}" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Отдел</label>
+                    <select class="form-select" name="departmentId">
+                        <option value="">Выберите отдел</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}"
+                                th:selected="${departmentId == dept.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${month == m}"
+                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option value="2024" th:selected="${year == 2024}">2024</option>
+                        <option value="2025" th:selected="${year == 2025}">2025</option>
+                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Анализ трендов -->
+    <div th:if="${trendData}" class="row mb-4">
+        <div class="col-md-4">
+            <div class="card" th:classappend="${trendData.trend == 'growth' ? 'border-success' : 'border-warning'}">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-up-circle fs-1"
+                       th:classappend="${trendData.trend == 'growth' ? 'text-success' : 'text-warning'}"></i>
+                    <h5 class="card-title mt-2">Текущая средняя</h5>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(trendData.currentAverage, 1, 2)}"></h3>
+                    <p class="text-muted" th:text="'в ' + trendData.departmentName"></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-graph-up-arrow fs-1 text-info"></i>
+                    <h5 class="card-title mt-2">Изменение</h5>
+                    <h3 th:classappend="${trendData.changeAmount.compareTo(#numbers.createBigDecimal('0')) > 0 ? 'text-success' : 'text-danger'}"
+                        th:text="${(trendData.changeAmount.compareTo(#numbers.createBigDecimal('0')) > 0 ? '+' : '') + '₽' + #numbers.formatDecimal(trendData.changeAmount, 1, 2)}">
+                    </h3>
+                    <p class="text-muted" th:text="'за месяц'"></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-percent fs-1 text-primary"></i>
+                    <h5 class="card-title mt-2">Процент изменения</h5>
+                    <h3 th:classappend="${trendData.changePercent.compareTo(#numbers.createBigDecimal('0')) > 0 ? 'text-success' : 'text-danger'}"
+                        th:text="${(trendData.changePercent.compareTo(#numbers.createBigDecimal('0')) > 0 ? '+' : '') + #numbers.formatDecimal(trendData.changePercent, 1, 2) + '%'}">
+                    </h3>
+                    <p class="text-muted" th:text="'по сравнению с прошлым месяцем'"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- График трендов -->
+    <div th:if="${trendData}" class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-graph-up"></i> Динамика средней зарплаты за 6 месяцев
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика компании -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-building"></i> Общая статистика компании
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h6>Общий ФОТ</h6>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(companyStats.totalFOT, 1, 2)}"
+                        class="text-primary"></h3>
+                </div>
+                <div class="col-md-3">
+                    <h6>Средняя зарплата</h6>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(companyStats.averageSalary, 1, 2)}"
+                        class="text-success"></h3>
+                </div>
+                <div class="col-md-3">
+                    <h6>Сотрудников</h6>
+                    <h3 th:text="${companyStats.totalEmployees}" class="text-warning"></h3>
+                </div>
+                <div class="col-md-3">
+                    <h6>Отделов</h6>
+                    <h3 th:text="${companyStats.departmentCount}" class="text-info"></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:unless="${trendData}" class="text-center text-muted py-5">
+        <i class="bi bi-arrow-trend-up display-1"></i>
+        <h4 class="mt-3">Выберите отдел для анализа трендов</h4>
+        <p>Для отображения анализа трендов выберите отдел</p>
+    </div>
+</div>
+
+<div id="scripts">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        function initTrendChart() {
+            const trendData = /*[[${trendData}]]*/ null;
+
+            if (!trendData) return;
+
+            // Здесь можно добавить загрузку исторических данных через AJAX
+            // Для демонстрации создадим искусственные данные
+            const months = ['Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен'];
+            const salaries = [
+                trendData.previousAverage - 5000,
+                trendData.previousAverage - 3000,
+                trendData.previousAverage - 1000,
+                trendData.previousAverage,
+                trendData.currentAverage - 2000,
+                trendData.currentAverage
+            ];
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Средняя зарплата',
+                        data: salaries,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function (value) {
+                                    return '₽' + value.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return 'Средняя зарплата: ₽' + context.parsed.y.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadTrendData() {
+            const departmentId = /*[[${departmentId}]]*/ null;
+            const month = /*[[${month}]]*/ 9;
+            const year = /*[[${year}]]*/ 2025;
+
+            if (!departmentId) {
+                alert('Выберите отдел для анализа');
+                return;
+            }
+
+            window.location.href = `/analyst/trend-analysis?departmentId=${departmentId}&month=${month}&year=${year}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initTrendChart();
+        });
+
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>
