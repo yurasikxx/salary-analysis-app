@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отчеты - Бухгалтер - Расчёт и анализ заработной платы</title>
+</head>
+<body th:replace="accountant/base :: html(
+    title='Генерация отчетов',
+    icon='bi-file-text',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+            <i class="bi bi-gear"></i> Сгенерировать отчет
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Период и фильтры -->
+    <div class="card mb-4">
+        <div class="card-body period-selector">
+            <form method="get" th:action="@{/accountant/reports}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="month" class="form-label">Месяц</label>
+                    <select class="form-select" id="month" name="month">
+                        <option value="1" th:selected="${month == 1}">Январь</option>
+                        <option value="2" th:selected="${month == 2}">Февраль</option>
+                        <option value="3" th:selected="${month == 3}">Март</option>
+                        <option value="4" th:selected="${month == 4}">Апрель</option>
+                        <option value="5" th:selected="${month == 5}">Май</option>
+                        <option value="6" th:selected="${month == 6}">Июнь</option>
+                        <option value="7" th:selected="${month == 7}">Июль</option>
+                        <option value="8" th:selected="${month == 8}">Август</option>
+                        <option value="9" th:selected="${month == 9}">Сентябрь</option>
+                        <option value="10" th:selected="${month == 10}">Октябрь</option>
+                        <option value="11" th:selected="${month == 11}">Ноябрь</option>
+                        <option value="12" th:selected="${month == 12}">Декабрь</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="year" class="form-label">Год</label>
+                    <select class="form-select" id="year" name="year">
+                        <option value="2024" th:selected="${year == 2024}">2024</option>
+                        <option value="2025" th:selected="${year == 2025}">2025</option>
+                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="departmentId" class="form-label">Отдел (опционально)</label>
+                    <select class="form-select" id="departmentId" name="departmentId">
+                        <option value="">Все отделы</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}"
+                                th:selected="${departmentId == dept.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего сотрудников</h6>
+                    <h3 th:text="${#lists.size(employees)}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-text fs-1 mb-2"></i>
+                    <h6 class="card-title">Доступно отчетов</h6>
+                    <h3>4</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar fs-1 mb-2"></i>
+                    <h6 class="card-title">Период</h6>
+                    <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMM yyyy')}"></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-clock fs-1 mb-2"></i>
+                    <h6 class="card-title">Форматы</h6>
+                    <h3>PDF/Excel</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрый доступ к отчетам -->
+    <div class="row">
+        <!-- Ведомость по зарплате -->
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-stack text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Ведомость по зарплате</h5>
+                    <p class="card-text text-muted small">
+                        Полная ведомость по начислениям, удержаниям и выплатам за период
+                    </p>
+                    <div class="btn-group w-100">
+                        <a th:href="@{/accountant/reports/salary/pdf(month=${month}, year=${year})}"
+                           class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-file-pdf"></i> PDF
+                        </a>
+                        <a th:href="@{/accountant/reports/salary/excel(month=${month}, year=${year})}"
+                           class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-file-spreadsheet"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Отчет по удержаниям -->
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-calculator text-danger fs-1 mb-3"></i>
+                    <h5 class="card-title">Отчет по удержаниям</h5>
+                    <p class="card-text text-muted small">
+                        Детальный анализ всех удержаний по сотрудникам и отделам
+                    </p>
+                    <div class="btn-group w-100">
+                        <a th:href="@{/accountant/reports/deductions/pdf(month=${month}, year=${year})}"
+                           class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-file-pdf"></i> PDF
+                        </a>
+                        <a th:href="@{/accountant/reports/deductions/excel(month=${month}, year=${year})}"
+                           class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-file-spreadsheet"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Отчет по налогам -->
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-percent text-warning fs-1 mb-3"></i>
+                    <h5 class="card-title">Отчет по налогам</h5>
+                    <p class="card-text text-muted small">
+                        Сводка по налогам и обязательным взносам за выбранный период
+                    </p>
+                    <div class="btn-group w-100">
+                        <a th:href="@{/accountant/reports/tax/pdf(month=${month}, year=${year})}"
+                           class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-file-pdf"></i> PDF
+                        </a>
+                        <a th:href="@{/accountant/reports/tax/excel(month=${month}, year=${year})}"
+                           class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-file-spreadsheet"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Расчетные листки -->
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-check text-info fs-1 mb-3"></i>
+                    <h5 class="card-title">Расчетные листки</h5>
+                    <p class="card-text text-muted small">
+                        Индивидуальные расчетные листки для сотрудников
+                    </p>
+                    <button class="btn btn-outline-primary btn-sm w-100"
+                            data-bs-toggle="modal"
+                            data-bs-target="#payslipModal">
+                        <i class="bi bi-gear"></i> Выбрать сотрудника
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- История генерации отчетов -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-clock-history"></i> Последние сгенерированные отчеты
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                    <tr>
+                        <th>Тип отчета</th>
+                        <th>Период</th>
+                        <th>Формат</th>
+                        <th>Дата генерации</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>Ведомость по зарплате</td>
+                        <td th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMM yyyy')}"></td>
+                        <td><span class="badge bg-danger">PDF</span></td>
+                        <td th:text="${#temporals.format(#temporals.createNow(), 'dd.MM.yyyy HH:mm')}"></td>
+                        <td>
+                            <a th:href="@{/accountant/reports/salary/pdf(month=${month}, year=${year})}"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Отчет по удержаниям</td>
+                        <td th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMM yyyy')}"></td>
+                        <td><span class="badge bg-success">Excel</span></td>
+                        <td th:text="${#temporals.format(#temporals.createNow(), 'dd.MM.yyyy HH:mm')}"></td>
+                        <td>
+                            <a th:href="@{/accountant/reports/deductions/excel(month=${month}, year=${year})}"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для генерации отчета -->
+<div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Генерация отчета</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/accountant/reports/generate}" method="post">
+                <input type="hidden" name="month" th:value="${month}">
+                <input type="hidden" name="year" th:value="${year}">
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="reportType" class="form-label">Тип отчета</label>
+                        <select class="form-select" id="reportType" name="reportType" required>
+                            <option value="">Выберите тип отчета</option>
+                            <option value="salary">Ведомость по зарплате</option>
+                            <option value="deductions">Отчет по удержаниям</option>
+                            <option value="tax">Отчет по налогам</option>
+                            <option value="payslip">Расчетный листок</option>
+                        </select>
+                    </div>
+
+                    <div id="employeeSelection" class="mb-3" style="display: none;">
+                        <label for="employeeId" class="form-label">Сотрудник</label>
+                        <select class="form-select" id="employeeId" name="employeeId">
+                            <option value="">Выберите сотрудника</option>
+                            <option th:each="employee : ${employees}"
+                                    th:value="${employee.id}"
+                                    th:text="${employee.fullName} + ' (' + ${employee.department.name} + ')'">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div id="departmentSelection" class="mb-3" style="display: none;">
+                        <label for="reportDepartmentId" class="form-label">Отдел (опционально)</label>
+                        <select class="form-select" id="reportDepartmentId" name="departmentId">
+                            <option value="">Все отделы</option>
+                            <option th:each="dept : ${departments}"
+                                    th:value="${dept.id}"
+                                    th:text="${dept.name}">
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сгенерировать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для расчетных листков -->
+<div class="modal fade" id="payslipModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Генерация расчетного листка</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Выберите сотрудника</label>
+                    <div class="list-group">
+                        <a th:each="employee : ${employees}"
+                           th:href="@{/accountant/reports/payslip/pdf(employeeId=${employee.id}, month=${month}, year=${year})}"
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong th:text="${employee.fullName}"></strong>
+                                <br>
+                                <small class="text-muted" th:text="${employee.position.title} + ', ' + ${employee.department.name}"></small>
+                            </div>
+                            <span class="badge bg-danger">PDF</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        // Показать/скрыть выбор сотрудника в зависимости от типа отчета
+        document.getElementById('reportType').addEventListener('change', function() {
+            const employeeSelection = document.getElementById('employeeSelection');
+            const departmentSelection = document.getElementById('departmentSelection');
+
+            if (this.value === 'payslip') {
+                employeeSelection.style.display = 'block';
+                departmentSelection.style.display = 'none';
+                document.getElementById('employeeId').required = true;
+            } else {
+                employeeSelection.style.display = 'none';
+                departmentSelection.style.display = 'block';
+                document.getElementById('employeeId').required = false;
+            }
+        });
+
+        // Автоматическое закрытие алертов
+        document.addEventListener('DOMContentLoaded', function () {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+
+        // Показать уведомление при скачивании
+        document.querySelectorAll('a[href*="/reports/"]').forEach(link => {
+            link.addEventListener('click', function() {
+                const spinner = document.createElement('span');
+                spinner.className = 'spinner-border spinner-border-sm ms-2';
+                this.appendChild(spinner);
+
+                setTimeout(() => {
+                    spinner.remove();
+                }, 3000);
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

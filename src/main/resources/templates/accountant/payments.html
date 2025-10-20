@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Все платежи - Бухгалтер - Расчёт и анализ заработной платы</title>
+</head>
+<body th:replace="accountant/base :: html(
+    title='Все платежи',
+    icon='bi-cash-stack',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="window.print()">
+            <i class="bi bi-printer"></i> Печать
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <!-- Период и фильтры -->
+    <div class="card mb-4">
+        <div class="card-body period-selector">
+            <form method="get" th:action="@{/accountant/payments}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="month" class="form-label">Месяц</label>
+                    <select class="form-select" id="month" name="month">
+                        <option value="1" th:selected="${month == 1}">Январь</option>
+                        <option value="2" th:selected="${month == 2}">Февраль</option>
+                        <option value="3" th:selected="${month == 3}">Март</option>
+                        <option value="4" th:selected="${month == 4}">Апрель</option>
+                        <option value="5" th:selected="${month == 5}">Май</option>
+                        <option value="6" th:selected="${month == 6}">Июнь</option>
+                        <option value="7" th:selected="${month == 7}">Июль</option>
+                        <option value="8" th:selected="${month == 8}">Август</option>
+                        <option value="9" th:selected="${month == 9}">Сентябрь</option>
+                        <option value="10" th:selected="${month == 10}">Октябрь</option>
+                        <option value="11" th:selected="${month == 11}">Ноябрь</option>
+                        <option value="12" th:selected="${month == 12}">Декабрь</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="year" class="form-label">Год</label>
+                    <select class="form-select" id="year" name="year">
+                        <option value="2024" th:selected="${year == 2024}">2024</option>
+                        <option value="2025" th:selected="${year == 2025}">2025</option>
+                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="departmentId" class="form-label">Отдел (опционально)</label>
+                    <select class="form-select" id="departmentId" name="departmentId">
+                        <option value="">Все отделы</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}"
+                                th:selected="${departmentId == dept.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Сводная статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-coin fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего начислено</h6>
+                    <h3 th:text="${totalAccruals} + ' руб.'">0 руб.</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-down-circle fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего удержано</h6>
+                    <h3 th:text="${totalDeductions} + ' руб.'">0 руб.</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-wallet2 fs-1 mb-2"></i>
+                    <h6 class="card-title">К выплате</h6>
+                    <h3 th:text="${netTotal} + ' руб.'">0 руб.</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-receipt fs-1 mb-2"></i>
+                    <h6 class="card-title">Операций</h6>
+                    <h3 th:text="${#lists.size(payments)}">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детальная таблица платежей -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-table"></i> Детализация всех платежей за
+                <span th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></span>
+            </h5>
+            <span class="badge bg-primary" th:text="${#lists.size(payments)} + ' операций'"></span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>Сотрудник</th>
+                        <th>Отдел</th>
+                        <th>Тип операции</th>
+                        <th>Категория</th>
+                        <th>Сумма</th>
+                        <th>Описание</th>
+                        <th>Дата создания</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="payment : ${payments}"
+                        th:class="${payment.paymentType.category == 'accrual'} ? 'table-success' : 'table-danger'">
+                        <td th:text="${payment.employee.fullName}"></td>
+                        <td th:text="${payment.employee.department.name}"></td>
+                        <td>
+                            <span th:text="${payment.paymentType.name}"></span>
+                            <small class="text-muted d-block" th:text="${payment.paymentType.code}"></small>
+                        </td>
+                        <td>
+                            <span th:if="${payment.paymentType.category == 'accrual'}"
+                                  class="badge bg-success">Начисление</span>
+                            <span th:if="${payment.paymentType.category == 'deduction'}"
+                                  class="badge bg-danger">Удержание</span>
+                        </td>
+                        <td>
+                            <span th:class="${payment.paymentType.category == 'accrual'} ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                                <span th:if="${payment.paymentType.category == 'accrual'}">+</span>
+                                <span th:if="${payment.paymentType.category == 'deduction'}">-</span>
+                                <span th:text="${payment.amount.abs()} + ' руб.'"></span>
+                            </span>
+                        </td>
+                        <td th:text="${payment.description}" class="small"></td>
+                        <td>
+                            <span th:if="${payment.createdAt != null}"
+                                  th:text="${#temporals.format(payment.createdAt, 'dd.MM.yyyy HH:mm')}">
+                            </span>
+                            <span th:unless="${payment.createdAt != null}"
+                                  class="text-muted">—</span>
+                        </td>
+                        <td>
+                            <form th:action="@{/accountant/payments/{id}/delete(id=${payment.id})}"
+                                  method="post" style="display: inline;">
+                                <input type="hidden" name="month" th:value="${month}">
+                                <input type="hidden" name="year" th:value="${year}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Удалить эту запись?')"
+                                        title="Удалить платеж">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(payments)}">
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="bi bi-table display-4"></i>
+                            <p class="mt-2">Платежи не найдены</p>
+                            <p class="small">Измените параметры фильтра или выполните расчеты за выбранный период</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                    <tfoot class="table-group-divider">
+                    <tr class="table-active fw-bold">
+                        <td colspan="4">Итого начислений:</td>
+                        <td class="text-success" th:text="${totalAccruals} + ' руб.'"></td>
+                        <td colspan="3"></td>
+                    </tr>
+                    <tr class="table-active fw-bold">
+                        <td colspan="4">Итого удержаний:</td>
+                        <td class="text-danger" th:text="'-' + ${totalDeductions} + ' руб.'"></td>
+                        <td colspan="3"></td>
+                    </tr>
+                    <tr class="table-primary fw-bold fs-5">
+                        <td colspan="4">Всего к выплате:</td>
+                        <td class="text-primary" th:text="${netTotal} + ' руб.'"></td>
+                        <td colspan="3"></td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Аналитика по типам платежей -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-pie-chart"></i> Распределение по типам операций
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(payments)}" class="text-center text-muted py-4">
+                        <i class="bi bi-pie-chart display-4"></i>
+                        <p class="mt-2">Нет данных для анализа</p>
+                    </div>
+                    <div th:unless="${#lists.isEmpty(payments)}">
+                        <table class="table table-sm">
+                            <thead>
+                            <tr>
+                                <th>Тип операции</th>
+                                <th>Количество</th>
+                                <th>Сумма</th>
+                                <th>Доля</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">Начисления</span></td>
+                                <td th:text="${#lists.size(#lists.select(payments, #objects.nullSafe(payment, 'payment.paymentType.category') == 'accrual'))}">0</td>
+                                <td th:text="${totalAccruals} + ' руб.'">0 руб.</td>
+                                <td th:text="${#numbers.formatDecimal(totalAccruals.divide(totalAccruals.add(totalDeductions), 4, java.math.RoundingMode.HALF_UP).multiply(100), 1, 1)} + ' %'">100 %</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Удержания</span></td>
+                                <td th:text="${#lists.size(#lists.select(payments, #objects.nullSafe(payment, 'payment.paymentType.category') == 'deduction'))}">0</td>
+                                <td th:text="${totalDeductions} + ' руб.'">0 руб.</td>
+                                <td th:text="${#numbers.formatDecimal(totalDeductions.divide(totalAccruals.add(totalDeductions), 4, java.math.RoundingMode.HALF_UP).multiply(100), 1, 1)} + ' %'">0 %</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bar-chart"></i> Топ-5 сотрудников по начислениям
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(payments)}" class="text-center text-muted py-4">
+                        <i class="bi bi-bar-chart display-4"></i>
+                        <p class="mt-2">Нет данных для анализа</p>
+                    </div>
+                    <div th:unless="${#lists.isEmpty(payments)}">
+                        <table class="table table-sm">
+                            <thead>
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th>Начисления</th>
+                                <th>Удержания</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="employee : ${topEmployees}">
+                                <td th:text="${employee.fullName}"></td>
+                                <td class="text-success" th:text="${employeeAccruals[employee.id]} + ' руб.'"></td>
+                                <td class="text-danger" th:text="${employeeDeductions[employee.id]} + ' руб.'"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        // Автоматическое закрытие алертов
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+
+        // Подтверждение удаления
+        function confirmDelete(message) {
+            return confirm(message || 'Вы уверены, что хотите удалить эту запись?');
+        }
+    </script>
+</div>
+</body>
+</html>
