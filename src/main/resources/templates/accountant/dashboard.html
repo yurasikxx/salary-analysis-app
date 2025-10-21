@@ -2,21 +2,25 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Главная - Бухгалтер - Расчёт и анализ заработной платы</title>
+    <title>Главная панель - Бухгалтер - Расчёт и анализ заработной платы</title>
 </head>
-<body th:replace="accountant/base :: html(
+<body th:replace="~{accountant/base :: html(
     title='Главная панель',
     icon='bi-speedometer2',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
-)">
+)}">
 
 <div id="actions">
     <div class="btn-group">
-        <a th:href="@{/accountant/deductions(month=${month}, year=${year})}" class="btn btn-primary">
-            <i class="bi bi-calculator"></i> Перейти к удержаниям
-        </a>
+        <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
+            <option th:each="m : ${#numbers.sequence(1,12)}"
+                    th:value="${m + ',' + year}"
+                    th:selected="${month == m}"
+                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMM yyyy')}">
+            </option>
+        </select>
     </div>
 </div>
 

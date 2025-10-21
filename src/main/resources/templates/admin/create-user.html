@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Создание пользователя - Администратор</title>
+</head>
+<body th:replace="layout :: html(
+    title='Создание пользователя',
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="content">
+    <!-- Хлебные крошки -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a th:href="@{/admin/dashboard}">Администратор</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a th:href="@{/admin/users}">Пользователи</a>
+            </li>
+            <li class="breadcrumb-item active">Создание пользователя</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-plus"></i> Создание нового пользователя
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/admin/users}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Логин *</label>
+                                    <input type="text" class="form-control" id="username" name="username"
+                                           required
+                                           th:classappend="${#fields.hasErrors('username') ? 'is-invalid' : ''}">
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('username')}">
+                                        Логин уже существует
+                                    </div>
+                                    <div class="form-text">
+                                        Уникальное имя для входа в систему
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Пароль *</label>
+                                    <input type="password" class="form-control" id="password" name="password"
+                                           required minlength="6">
+                                    <div class="form-text">
+                                        Минимум 6 символов
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="employeeId" class="form-label">Сотрудник *</label>
+                            <select class="form-select" id="employeeId" name="employeeId" required>
+                                <option value="">Выберите сотрудника</option>
+                                <option th:each="employee : ${employees}"
+                                        th:value="${employee.id}"
+                                        th:text="${employee.fullName + ' - ' + employee.position.title + ' (' + employee.department.name + ')'}">
+                                </option>
+                            </select>
+                            <div class="form-text">
+                                Сотрудник, к которому будет привязан пользователь
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Роль *</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Выберите роль</option>
+                                <option th:each="role : ${roles}"
+                                        th:value="${role}"
+                                        th:text="${role}">
+                                </option>
+                            </select>
+                            <div class="form-text">
+                                Определяет права доступа в системе
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle"></i> Описание ролей:
+                            </h6>
+                            <ul class="mb-0 small">
+                                <li><strong>ADMIN</strong> - Полный доступ ко всем функциям системы</li>
+                                <li><strong>HR</strong> - Управление сотрудниками и табелями</li>
+                                <li><strong>RATESETTER</strong> - Расчет начислений и зарплат</li>
+                                <li><strong>ACCOUNTANT</strong> - Удержания, налоги, отчетность</li>
+                                <li><strong>ANALYST</strong> - Аналитика и отчеты по зарплатам</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a th:href="@{/admin/users}" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Создать пользователя
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Валидация формы
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function (e) {
+                const password = document.getElementById('password').value;
+                if (password.length < 6) {
+                    e.preventDefault();
+                    alert('Пароль должен содержать минимум 6 символов');
+                    return false;
+                }
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

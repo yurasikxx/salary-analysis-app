@@ -113,10 +113,14 @@ public class TimesheetService {
     }
 
     public Long getConfirmedTimesheetsCount(Integer month, Integer year) {
-        return timesheetRepository.countByMonthAndYearAndStatus(month, year, "confirmed");
+        return timesheetRepository.countByMonthAndYearAndStatus(month, year, Timesheet.TimesheetStatus.CONFIRMED);
     }
 
     public Long getPendingTimesheetsCount(Integer month, Integer year) {
-        return timesheetRepository.countByMonthAndYearAndStatus(month, year, "draft");
+        return timesheetRepository.countByMonthAndYearAndStatus(month, year, Timesheet.TimesheetStatus.DRAFT);
+    }
+
+    public List<Timesheet> getTimesheetsByStatus(Timesheet.TimesheetStatus status) {
+        return timesheetRepository.findByStatus(status);
     }
 }

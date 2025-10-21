@@ -19,6 +19,8 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Integer> {
 
     boolean existsByEmployeeAndMonthAndYear(Employee employee, Integer month, Integer year);
 
+    List<Timesheet> findByStatus(Timesheet.TimesheetStatus status);
+
     @Query("SELECT t FROM Timesheet t WHERE t.employee.department.id = :departmentId AND t.month = :month AND t.year = :year")
     List<Timesheet> findByDepartmentAndPeriod(@Param("departmentId") Integer departmentId,
                                               @Param("month") Integer month,
@@ -30,7 +32,7 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Integer> {
     @Query("SELECT COUNT(t) FROM Timesheet t WHERE t.month = :month AND t.year = :year AND t.status = :status")
     Long countByMonthAndYearAndStatus(@Param("month") Integer month,
                                       @Param("year") Integer year,
-                                      @Param("status") String status);
+                                      @Param("status") Timesheet.TimesheetStatus status);
 
     @Query("SELECT COUNT(t) FROM Timesheet t WHERE t.month = :month AND t.year = :year")
     Long countByMonthAndYear(@Param("month") Integer month,

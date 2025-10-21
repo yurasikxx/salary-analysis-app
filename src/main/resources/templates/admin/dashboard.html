@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Дашборд администратора - Система управления</title>
+</head>
+<body th:replace="layout :: html(
+    title='Дашборд администратора',
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)">
+
+<div id="content">
+    <!-- Заголовок -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h1 class="display-6"><i class="bi bi-shield-check"></i> Панель администратора</h1>
+                            <p class="lead mb-0">Управление пользователями, настройки системы и мониторинг</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <h3>Система</h3>
+                            <p class="mb-0">Администрирование</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ключевые метрики -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего пользователей</h6>
+                    <h3 th:text="${totalUsers}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle fs-1 mb-2"></i>
+                    <h6 class="card-title">Активных пользователей</h6>
+                    <h3 th:text="${activeUsers}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-x fs-1 mb-2"></i>
+                    <h6 class="card-title">Неактивных</h6>
+                    <h3 th:text="${inactiveUsers}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-badge fs-1 mb-2"></i>
+                    <h6 class="card-title">Сотрудников в системе</h6>
+                    <h3 th:text="${totalEmployees}">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрый доступ -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Быстрый доступ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/admin/users}"
+                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-people fs-1 mb-2"></i>
+                                <span>Управление пользователями</span>
+                            </a>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/admin/system}"
+                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-gear fs-1 mb-2"></i>
+                                <span>Настройки системы</span>
+                            </a>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/admin/audit}"
+                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-clock-history fs-1 mb-2"></i>
+                                <span>Журнал событий</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика по ролям -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart"></i> Распределение пользователей по ролям
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="rolesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up"></i> Активность системы
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span class="ms-2">Система работает нормально</span>
+                            </div>
+                            <span class="badge bg-success">OK</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-database"></i>
+                                <span class="ms-2">База данных</span>
+                            </div>
+                            <span class="badge bg-success">Online</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-shield-check"></i>
+                                <span class="ms-2">Безопасность</span>
+                            </div>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-clock"></i>
+                                <span class="ms-2">Время работы</span>
+                            </div>
+                            <span class="badge bg-info">24/7</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        function initRolesChart() {
+            const ctx = document.getElementById('rolesChart').getContext('2d');
+
+            // Демо-данные для графика (в реальном приложении нужно получать с сервера)
+            const data = {
+                labels: ['Администраторы', 'Кадры', 'Нормировщики', 'Бухгалтеры', 'Аналитики'],
+                datasets: [{
+                    data: [2, 3, 2, 2, 1],
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
+                    ]
+                }]
+            };
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initRolesChart();
+        });
+
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

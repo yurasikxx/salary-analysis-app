@@ -23,6 +23,22 @@ public class AdminController {
         this.employeeService = employeeService;
     }
 
+    @GetMapping("/dashboard")
+    public String dashboard(Model model) {
+        long totalUsers = userManagementService.getAllUsers().size();
+        long activeUsers = userManagementService.getActiveUsers().size();
+        long totalEmployees = employeeService.getAllEmployees().size();
+        long activeEmployees = employeeService.getActiveEmployees().size();
+
+        model.addAttribute("totalUsers", totalUsers);
+        model.addAttribute("activeUsers", activeUsers);
+        model.addAttribute("inactiveUsers", totalUsers - activeUsers);
+        model.addAttribute("totalEmployees", totalEmployees);
+        model.addAttribute("activeEmployees", activeEmployees);
+
+        return "admin/dashboard";
+    }
+
     @GetMapping("/users")
     public String usersPage(Model model) {
         List<User> users = userManagementService.getActiveUsers();
@@ -53,6 +69,7 @@ public class AdminController {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("User not found"));
         model.addAttribute("user", user);
+        model.addAttribute("roles", List.of("ADMIN", "HR", "RATESETTER", "ACCOUNTANT", "ANALYST"));
         return "admin/edit-user";
     }
 
@@ -69,5 +86,30 @@ public class AdminController {
     public String deactivateUser(@PathVariable Integer id) {
         userManagementService.deactivateUser(id);
         return "redirect:/admin/users?success=User deactivated";
+    }
+
+    @GetMapping("/system")
+    public String systemSettings(Model model) {
+        // Здесь можно добавить настройки системы
+        return "admin/system-settings";
+    }
+
+    @GetMapping("/audit")
+    public String auditLog(Model model) {
+        // Здесь можно добавить журнал событий
+        return "admin/audit-log";
+    }
+
+    @PostMapping("/users/{id}/activate")
+    public String activateUser(@PathVariable Integer id) {
+        userManagementService.updateUser(id, null, null, true);
+        return "redirect:/admin/users?success=User activated";
+    }
+
+    @PostMapping("/users/{id}/change-password")
+    public String changePassword(@PathVariable Integer id,
+                                 @RequestParam String newPassword) {
+        userManagementService.changePassword(id, newPassword);
+        return "redirect:/admin/users?success=Password changed";
     }
 }

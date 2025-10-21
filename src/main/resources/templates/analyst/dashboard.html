@@ -2,15 +2,15 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Дашборд - Аналитик - Аналитика заработной платы</title>
+    <title>Аналитическая панель - Аналитик - Аналитика заработной платы</title>
 </head>
-<body th:replace="analyst/base :: html(
+<body th:replace="~{analyst/base :: html(
     title='Аналитическая панель',
     icon='bi-speedometer2',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
-)">
+)}">
 
 <div id="actions">
     <div class="btn-group">

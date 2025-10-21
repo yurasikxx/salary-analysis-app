@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" lang="ru">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6" lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,40 +15,33 @@
             background-color: #f8f9fa;
             border-right: 1px solid #dee2e6;
         }
-
         .nav-link {
             color: #495057;
             padding: 0.75rem 1rem;
             border-radius: 0.375rem;
             margin: 0.125rem 0;
         }
-
         .nav-link:hover, .nav-link.active {
             background-color: #e9ecef;
             color: #0d6efd;
         }
-
         .navbar-brand {
             font-weight: 600;
         }
-
         .stat-card {
             transition: transform 0.2s;
             border: none;
             box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
-
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
         }
-
         .chart-container {
             position: relative;
             height: 300px;
             width: 100%;
         }
-
         .analytics-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -71,9 +64,13 @@
                     <span sec:authentication="name"></span>
                     <small class="text-muted ms-2">(Аналитик)</small>
                 </span>
-            <a th:href="@{/logout}" class="btn btn-outline-light btn-sm">
-                <i class="bi bi-box-arrow-right"></i> Выйти
-            </a>
+            <!-- Форма для logout -->
+            <form th:action="@{/logout}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Выйти
+                </button>
+            </form>
         </div>
     </div>
 </nav>
