@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Динамика зарплат - Аналитик - Аналитика заработной платы</title>
+    <title>Динамика зарплат - Аналитик</title>
 </head>
 <body th:replace="analyst/base :: html(
     title='Динамика заработных плат',
@@ -14,14 +14,13 @@
 
 <div id="actions">
     <div class="btn-group">
-        <button class="btn btn-success" onclick="loadDynamicsData()">
+        <button class="btn btn-outline-success" onclick="loadDynamicsData()">
             <i class="bi bi-arrow-clockwise"></i> Обновить график
         </button>
     </div>
 </div>
 
 <div id="content">
-    <!-- Фильтры -->
     <div class="card mb-4">
         <div class="card-body">
             <form method="get" th:action="@{/analyst/salary-dynamics}" class="row g-3 align-items-end">
@@ -67,7 +66,7 @@
                            max="2030">
                 </div>
                 <div class="col-md-1">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-dark w-100">
                         <i class="bi bi-filter"></i> Применить
                     </button>
                 </div>
@@ -75,27 +74,9 @@
         </div>
     </div>
 
-    <!-- График динамики -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="bi bi-graph-up"></i>
-                <span th:if="${dynamicsData}">Динамика зарплат в отделе: <span
-                        th:text="${dynamicsData.departmentName}"></span></span>
-                <span th:unless="${dynamicsData}">Динамика зарплат</span>
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="chart-container">
-                <canvas id="dynamicsChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Статистика -->
-    <div th:if="${dynamicsData}" class="row">
+    <div th:if="${dynamicsData}" class="row mb-4">
         <div class="col-md-3">
-            <div class="card text-white bg-info">
+            <div class="card text-white bg-primary">
                 <div class="card-body text-center">
                     <h6 class="card-title">Период анализа</h6>
                     <h4 th:text="${startMonth + '.' + startYear + ' - ' + endMonth + '.' + endYear}"></h4>
@@ -119,14 +100,71 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white bg-primary">
+            <div class="card text-white bg-info">
                 <div class="card-body text-center">
                     <h6 class="card-title">Изменение за период</h6>
                     <h4 th:if="${#lists.size(dynamicsData.averageSalaries) >= 2}"
-                        th:text="${'₽' + #numbers.formatDecimal(#lists.get(dynamicsData.averageSalaries, #lists.size(dynamicsData.averageSalaries)-1) - #lists.get(dynamicsData.averageSalaries, 0), 1, 2)}">
+                        th:class="${#lists.get(dynamicsData.averageSalaries, #lists.size(dynamicsData.averageSalaries)-1) - #lists.get(dynamicsData.averageSalaries, 0) >= 0 ? 'text-success' : 'text-danger'}"
+                        th:text="${(#lists.get(dynamicsData.averageSalaries, #lists.size(dynamicsData.averageSalaries)-1) - #lists.get(dynamicsData.averageSalaries, 0) >= 0 ? '+' : '') + '₽' + #numbers.formatDecimal(#lists.get(dynamicsData.averageSalaries, #lists.size(dynamicsData.averageSalaries)-1) - #lists.get(dynamicsData.averageSalaries, 0), 1, 2)}">
                     </h4>
                     <h4 th:unless="${#lists.size(dynamicsData.averageSalaries) >= 2}">—</h4>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-graph-up"></i>
+                <span th:if="${dynamicsData}">Динамика зарплат в отделе: <span
+                        th:text="${dynamicsData.departmentName}"></span></span>
+                <span th:unless="${dynamicsData}">Динамика зарплат</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="dynamicsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${dynamicsData}" class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-table"></i> Детальная статистика по месяцам
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>Период</th>
+                        <th class="text-end">Средняя зарплата</th>
+                        <th class="text-end">Количество сотрудников</th>
+                        <th class="text-end">Общий ФОТ</th>
+                        <th class="text-end">Изменение зарплаты</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="item, iter : ${dynamicsData.labels}">
+                        <td th:text="${item}"></td>
+                        <td class="text-end"
+                            th:text="${'₽' + #numbers.formatDecimal(dynamicsData.averageSalaries[iter.index], 1, 2)}"></td>
+                        <td class="text-end" th:text="${dynamicsData.employeeCounts[iter.index]}"></td>
+                        <td class="text-end"
+                            th:text="${'₽' + #numbers.formatDecimal(dynamicsData.totalFOT[iter.index], 1, 2)}"></td>
+                        <td class="text-end">
+    <span th:if="${iter.index > 0}"
+          th:class="${dynamicsData.averageSalaries[iter.index] - dynamicsData.averageSalaries[iter.index - 1] >= 0} ? 'text-success' : 'text-danger'"
+          th:text="${(dynamicsData.averageSalaries[iter.index] - dynamicsData.averageSalaries[iter.index - 1] >= 0 ? '+' : '') + '₽' + #numbers.formatDecimal(dynamicsData.averageSalaries[iter.index] - dynamicsData.averageSalaries[iter.index - 1], 1, 2)}">
+    </span>
+                            <span th:unless="${iter.index > 0}" class="text-muted">—</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -140,22 +178,21 @@
 
 <div id="scripts">
     <script th:inline="javascript">
-        /*<![CDATA[*/
-
         let dynamicsChart = null;
 
         function initDynamicsChart() {
-            const ctx = document.getElementById('dynamicsChart').getContext('2d');
             const dynamicsData = /*[[${dynamicsData}]]*/ null;
 
             if (!dynamicsData || !dynamicsData.labels || dynamicsData.labels.length === 0) {
-                showNoData(ctx, 'dynamicsChart');
+                showNoData('dynamicsChart');
                 return;
             }
 
             if (dynamicsChart) {
                 dynamicsChart.destroy();
             }
+
+            const ctx = document.getElementById('dynamicsChart').getContext('2d');
 
             dynamicsChart = new Chart(ctx, {
                 type: 'line',
@@ -165,17 +202,18 @@
                         {
                             label: 'Средняя зарплата (руб.)',
                             data: dynamicsData.averageSalaries,
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                            borderWidth: 2,
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            borderWidth: 3,
                             fill: true,
-                            tension: 0.4
+                            tension: 0.4,
+                            yAxisID: 'y'
                         },
                         {
                             label: 'Количество сотрудников',
                             data: dynamicsData.employeeCounts,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderColor: '#1cc88a',
+                            backgroundColor: 'rgba(28, 200, 138, 0.1)',
                             borderWidth: 2,
                             fill: true,
                             tension: 0.4,
@@ -252,23 +290,20 @@
                 return;
             }
 
-            // Здесь можно добавить AJAX загрузку данных
             window.location.href = `/analyst/salary-dynamics?departmentId=${departmentId}&startMonth=${startMonth}&startYear=${startYear}&endMonth=${endMonth}&endYear=${endYear}`;
         }
 
-        function showNoData(ctx, canvasId) {
-            const canvas = document.getElementById(canvasId);
+        function showNoData(canvasId) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
             ctx.font = '16px Arial';
             ctx.fillStyle = '#6c757d';
             ctx.textAlign = 'center';
-            ctx.fillText('Нет данных для отображения', canvas.width / 2, canvas.height / 2);
+            ctx.fillText('Нет данных для отображения', ctx.canvas.width / 2, ctx.canvas.height / 2);
         }
 
         document.addEventListener('DOMContentLoaded', function () {
             initDynamicsChart();
         });
-
-        /*]]>*/
     </script>
 </div>
 </body>

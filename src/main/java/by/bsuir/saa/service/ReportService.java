@@ -90,7 +90,6 @@ public class ReportService {
             return report.toString();
         }
 
-        // Группируем по типам удержаний
         Map<PaymentType, List<Payment>> paymentsByType = deductionPayments.stream()
                 .collect(Collectors.groupingBy(Payment::getPaymentType));
 
@@ -116,7 +115,6 @@ public class ReportService {
             totalDeductions = totalDeductions.add(typeTotal);
         }
 
-        // Группируем по сотрудникам
         Map<Employee, List<Payment>> paymentsByEmployee = deductionPayments.stream()
                 .collect(Collectors.groupingBy(Payment::getEmployee));
 
@@ -149,7 +147,6 @@ public class ReportService {
             report.append("========================================\n");
         }
 
-        // Группируем по отделам
         Map<Department, List<Payment>> paymentsByDepartment = deductionPayments.stream()
                 .collect(Collectors.groupingBy(p -> p.getEmployee().getDepartment()));
 
@@ -351,25 +348,21 @@ public class ReportService {
 
         document.open();
 
-        // Создаем шрифты для PDF
         Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, BaseColor.BLACK);
         Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, BaseColor.BLACK);
         Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 10, BaseColor.BLACK);
         Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 8, BaseColor.DARK_GRAY);
 
-        // Заголовок
         Paragraph title = new Paragraph("ВЕДОМОСТЬ ПО ЗАРПЛАТЕ", titleFont);
         title.setAlignment(Element.ALIGN_CENTER);
         title.setSpacingAfter(20);
         document.add(title);
 
-        // Период
         Paragraph period = new Paragraph("За период: " + getMonthName(month) + " " + year, normalFont);
         period.setAlignment(Element.ALIGN_CENTER);
         period.setSpacingAfter(20);
         document.add(period);
 
-        // Таблица
         PdfPTable table = new PdfPTable(5);
         table.setWidthPercentage(100);
         table.setSpacingBefore(10f);
@@ -378,14 +371,12 @@ public class ReportService {
         float[] columnWidths = {1f, 4f, 2f, 2f, 2f};
         table.setWidths(columnWidths);
 
-        // Заголовки таблицы
         table.addCell(createPdfCell("№", headerFont, Element.ALIGN_CENTER));
         table.addCell(createPdfCell("Сотрудник", headerFont, Element.ALIGN_LEFT));
         table.addCell(createPdfCell("Начисления", headerFont, Element.ALIGN_RIGHT));
         table.addCell(createPdfCell("Удержания", headerFont, Element.ALIGN_RIGHT));
         table.addCell(createPdfCell("К выплате", headerFont, Element.ALIGN_RIGHT));
 
-        // Данные
         BigDecimal totalAccrued = BigDecimal.ZERO;
         BigDecimal totalDeducted = BigDecimal.ZERO;
         BigDecimal totalNet = BigDecimal.ZERO;
@@ -403,7 +394,6 @@ public class ReportService {
             totalNet = totalNet.add(sp.getNetSalary());
         }
 
-        // Итоговая строка
         table.addCell(createPdfCell("", headerFont, Element.ALIGN_CENTER));
         table.addCell(createPdfCell("ИТОГО:", headerFont, Element.ALIGN_RIGHT));
         table.addCell(createPdfCell(String.format("%.2f руб.", totalAccrued), headerFont, Element.ALIGN_RIGHT));
@@ -412,7 +402,6 @@ public class ReportService {
 
         document.add(table);
 
-        // Подпись и дата
         Paragraph signature = new Paragraph("\n\nДата формирования: " +
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), smallFont);
         document.add(signature);
@@ -438,7 +427,6 @@ public class ReportService {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Ведомость по зарплате");
 
-            // Стили для Excel
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -447,7 +435,6 @@ public class ReportService {
             headerStyle.setBorderLeft(BorderStyle.THIN);
             headerStyle.setBorderRight(BorderStyle.THIN);
 
-            // Шрифт для заголовков Excel
             org.apache.poi.ss.usermodel.Font headerFontExcel = workbook.createFont();
             headerFontExcel.setBold(true);
             headerStyle.setFont(headerFontExcel);
@@ -476,7 +463,6 @@ public class ReportService {
             totalFont.setBold(true);
             totalStyle.setFont(totalFont);
 
-            // Заголовок
             Row titleRow = sheet.createRow(0);
             Cell titleCell = titleRow.createCell(0);
             titleCell.setCellValue("ВЕДОМОСТЬ ПО ЗАРПЛАТЕ");
@@ -485,10 +471,8 @@ public class ReportService {
             Cell periodCell = periodRow.createCell(0);
             periodCell.setCellValue("За период: " + getMonthName(month) + " " + year);
 
-            // Пустая строка
             sheet.createRow(2);
 
-            // Заголовки таблицы
             Row headerRow = sheet.createRow(3);
             String[] headers = {"№", "Сотрудник", "Должность", "Отдел", "Начисления", "Удержания", "К выплате"};
             for (int i = 0; i < headers.length; i++) {
@@ -497,7 +481,6 @@ public class ReportService {
                 cell.setCellStyle(headerStyle);
             }
 
-            // Данные
             BigDecimal totalAccrued = BigDecimal.ZERO;
             BigDecimal totalDeducted = BigDecimal.ZERO;
             BigDecimal totalNet = BigDecimal.ZERO;
@@ -506,37 +489,30 @@ public class ReportService {
             for (SalaryPayment sp : salaryPayments) {
                 Row row = sheet.createRow(rowNum++);
 
-                // №
                 Cell numCell = row.createCell(0);
                 numCell.setCellValue(rowNum - 4);
                 numCell.setCellStyle(normalStyle);
 
-                // Сотрудник
                 Cell nameCell = row.createCell(1);
                 nameCell.setCellValue(sp.getEmployee().getFullName());
                 nameCell.setCellStyle(normalStyle);
 
-                // Должность
                 Cell positionCell = row.createCell(2);
                 positionCell.setCellValue(sp.getEmployee().getPosition().getTitle());
                 positionCell.setCellStyle(normalStyle);
 
-                // Отдел
                 Cell deptCell = row.createCell(3);
                 deptCell.setCellValue(sp.getEmployee().getDepartment().getName());
                 deptCell.setCellStyle(normalStyle);
 
-                // Начисления
                 Cell accrualCell = row.createCell(4);
                 accrualCell.setCellValue(sp.getTotalAccrued().doubleValue());
                 accrualCell.setCellStyle(moneyStyle);
 
-                // Удержания
                 Cell deductionCell = row.createCell(5);
                 deductionCell.setCellValue(sp.getTotalDeducted().doubleValue());
                 deductionCell.setCellStyle(moneyStyle);
 
-                // К выплате
                 Cell netCell = row.createCell(6);
                 netCell.setCellValue(sp.getNetSalary().doubleValue());
                 netCell.setCellStyle(moneyStyle);
@@ -546,7 +522,6 @@ public class ReportService {
                 totalNet = totalNet.add(sp.getNetSalary());
             }
 
-            // Итоговая строка
             Row totalRow = sheet.createRow(rowNum);
             for (int i = 0; i < 4; i++) {
                 Cell cell = totalRow.createCell(i);
@@ -568,7 +543,6 @@ public class ReportService {
             totalNetCell.setCellValue(totalNet.doubleValue());
             totalNetCell.setCellStyle(totalStyle);
 
-            // Авто-размер колонок
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
             }
@@ -591,7 +565,6 @@ public class ReportService {
 
         document.open();
 
-        // Создаем шрифты для PDF
         Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, BaseColor.BLACK);
         Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, BaseColor.BLACK);
         Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 10, BaseColor.BLACK);
@@ -612,7 +585,6 @@ public class ReportService {
             noData.setAlignment(Element.ALIGN_CENTER);
             document.add(noData);
         } else {
-            // Создаем таблицу для удержаний
             PdfPTable table = new PdfPTable(4);
             table.setWidthPercentage(100);
             table.setSpacingBefore(10f);
@@ -620,13 +592,11 @@ public class ReportService {
             float[] columnWidths = {3f, 2f, 2f, 3f};
             table.setWidths(columnWidths);
 
-            // Заголовки таблицы
             table.addCell(createPdfCell("Сотрудник", headerFont, Element.ALIGN_LEFT));
             table.addCell(createPdfCell("Тип удержания", headerFont, Element.ALIGN_LEFT));
             table.addCell(createPdfCell("Сумма", headerFont, Element.ALIGN_RIGHT));
             table.addCell(createPdfCell("Описание", headerFont, Element.ALIGN_LEFT));
 
-            // Данные
             BigDecimal totalDeductions = BigDecimal.ZERO;
             for (Payment payment : deductionPayments) {
                 table.addCell(createPdfCell(payment.getEmployee().getFullName(), normalFont, Element.ALIGN_LEFT));
@@ -637,7 +607,6 @@ public class ReportService {
                 totalDeductions = totalDeductions.add(payment.getAmount().abs());
             }
 
-            // Итог
             table.addCell(createPdfCell("", headerFont, Element.ALIGN_LEFT));
             table.addCell(createPdfCell("ИТОГО:", headerFont, Element.ALIGN_RIGHT));
             table.addCell(createPdfCell(String.format("%.2f руб.", totalDeductions), headerFont, Element.ALIGN_RIGHT));
@@ -645,7 +614,6 @@ public class ReportService {
 
             document.add(table);
 
-            // Статистика
             Paragraph stats = new Paragraph("\n\nСтатистика:\n" +
                     "Всего удержаний: " + deductionPayments.size() + " операций\n" +
                     "Общая сумма удержаний: " + String.format("%.2f", totalDeductions) + " руб.\n" +
@@ -654,7 +622,6 @@ public class ReportService {
             document.add(stats);
         }
 
-        // Подпись и дата
         Paragraph signature = new Paragraph("\n\nДата формирования: " +
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), smallFont);
         document.add(signature);
@@ -672,7 +639,6 @@ public class ReportService {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Удержания");
 
-            // Стили для Excel
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -689,17 +655,14 @@ public class ReportService {
             normalStyle.setBorderLeft(BorderStyle.THIN);
             normalStyle.setBorderRight(BorderStyle.THIN);
 
-            // Заголовок
             Row titleRow = sheet.createRow(0);
             titleRow.createCell(0).setCellValue("ОТЧЕТ ПО УДЕРЖАНИЯМ ИЗ ЗАРАБОТНОЙ ПЛАТЫ");
 
             Row periodRow = sheet.createRow(1);
             periodRow.createCell(0).setCellValue("За период: " + getMonthName(month) + " " + year);
 
-            // Пустая строка
             sheet.createRow(2);
 
-            // Данные
             int rowNum = 3;
             String[] headers = {"Сотрудник", "Отдел", "Тип удержания", "Сумма", "Описание", "Дата создания"};
             Row headerRow = sheet.createRow(rowNum++);
@@ -727,14 +690,12 @@ public class ReportService {
                 totalDeductions = totalDeductions.add(payment.getAmount().abs());
             }
 
-            // Итоговая строка
             Row totalRow = sheet.createRow(rowNum);
             totalRow.createCell(2).setCellValue("ИТОГО:");
             Cell totalCell = totalRow.createCell(3);
             totalCell.setCellValue(totalDeductions.doubleValue());
             totalCell.setCellStyle(moneyStyle);
 
-            // Статистика
             Row statsRow1 = sheet.createRow(rowNum + 2);
             statsRow1.createCell(0).setCellValue("Статистика:");
             Row statsRow2 = sheet.createRow(rowNum + 3);
@@ -745,7 +706,6 @@ public class ReportService {
             statsRow4.createCell(0).setCellValue("Количество сотрудников с удержаниями: " +
                     deductionPayments.stream().map(p -> p.getEmployee().getId()).distinct().count());
 
-            // Авто-размер колонок
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
             }
@@ -754,5 +714,412 @@ public class ReportService {
             workbook.write(outputStream);
             return outputStream.toByteArray();
         }
+    }
+
+    public byte[] generateTaxReportPdf(Integer month, Integer year) throws DocumentException {
+        List<Payment> taxPayments = paymentRepository.findTaxPaymentsByPeriod(month, year);
+
+        Document document = new Document();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        PdfWriter.getInstance(document, outputStream);
+
+        document.open();
+
+        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, BaseColor.BLACK);
+        Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, BaseColor.BLACK);
+        Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 10, BaseColor.BLACK);
+        Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 8, BaseColor.DARK_GRAY);
+
+        Paragraph title = new Paragraph("ОТЧЕТ ПО НАЛОГАМ И ВЗНОСАМ", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(20);
+        document.add(title);
+
+        Paragraph period = new Paragraph("За период: " + getMonthName(month) + " " + year, normalFont);
+        period.setAlignment(Element.ALIGN_CENTER);
+        period.setSpacingAfter(20);
+        document.add(period);
+
+        if (taxPayments.isEmpty()) {
+            Paragraph noData = new Paragraph("Налоговые платежи за указанный период отсутствуют.", normalFont);
+            noData.setAlignment(Element.ALIGN_CENTER);
+            document.add(noData);
+        } else {
+            BigDecimal totalTaxes = taxPayments.stream()
+                    .map(Payment::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Paragraph summary = new Paragraph("СВОДНАЯ СТАТИСТИКА:\n", headerFont);
+            summary.setSpacingAfter(10);
+            document.add(summary);
+
+            PdfPTable summaryTable = new PdfPTable(2);
+            summaryTable.setWidthPercentage(50);
+            summaryTable.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+            summaryTable.addCell(createPdfCell("Общая сумма налогов:", normalFont, Element.ALIGN_LEFT));
+            summaryTable.addCell(createPdfCell(String.format("%.2f руб.", totalTaxes), normalFont, Element.ALIGN_RIGHT));
+            summaryTable.addCell(createPdfCell("Количество операций:", normalFont, Element.ALIGN_LEFT));
+            summaryTable.addCell(createPdfCell(String.valueOf(taxPayments.size()), normalFont, Element.ALIGN_RIGHT));
+
+            document.add(summaryTable);
+
+            Map<PaymentType, List<Payment>> taxesByType = taxPayments.stream()
+                    .collect(Collectors.groupingBy(Payment::getPaymentType));
+
+            Paragraph detailsTitle = new Paragraph("\nДЕТАЛИЗАЦИЯ ПО ВИДАМ НАЛОГОВ:", headerFont);
+            detailsTitle.setSpacingAfter(10);
+            document.add(detailsTitle);
+
+            PdfPTable detailsTable = new PdfPTable(3);
+            detailsTable.setWidthPercentage(100);
+            float[] widths = {4f, 2f, 2f};
+            detailsTable.setWidths(widths);
+
+            detailsTable.addCell(createPdfCell("Вид налога/взноса", headerFont, Element.ALIGN_LEFT));
+            detailsTable.addCell(createPdfCell("Количество", headerFont, Element.ALIGN_CENTER));
+            detailsTable.addCell(createPdfCell("Сумма", headerFont, Element.ALIGN_RIGHT));
+
+            for (Map.Entry<PaymentType, List<Payment>> entry : taxesByType.entrySet()) {
+                PaymentType taxType = entry.getKey();
+                List<Payment> typePayments = entry.getValue();
+                BigDecimal typeTotal = typePayments.stream()
+                        .map(Payment::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                detailsTable.addCell(createPdfCell(taxType.getName(), normalFont, Element.ALIGN_LEFT));
+                detailsTable.addCell(createPdfCell(String.valueOf(typePayments.size()), normalFont, Element.ALIGN_CENTER));
+                detailsTable.addCell(createPdfCell(String.format("%.2f руб.", typeTotal), normalFont, Element.ALIGN_RIGHT));
+            }
+
+            document.add(detailsTable);
+
+            Paragraph employeesTitle = new Paragraph("\nДЕТАЛИЗАЦИЯ ПО СОТРУДНИКАМ:", headerFont);
+            employeesTitle.setSpacingAfter(10);
+            document.add(employeesTitle);
+
+            PdfPTable employeesTable = new PdfPTable(4);
+            employeesTable.setWidthPercentage(100);
+            float[] empWidths = {3f, 2f, 2f, 1f};
+            employeesTable.setWidths(empWidths);
+
+            employeesTable.addCell(createPdfCell("Сотрудник", headerFont, Element.ALIGN_LEFT));
+            employeesTable.addCell(createPdfCell("Отдел", headerFont, Element.ALIGN_LEFT));
+            employeesTable.addCell(createPdfCell("Вид налога", headerFont, Element.ALIGN_LEFT));
+            employeesTable.addCell(createPdfCell("Сумма", headerFont, Element.ALIGN_RIGHT));
+
+            for (Payment payment : taxPayments) {
+                employeesTable.addCell(createPdfCell(payment.getEmployee().getFullName(), normalFont, Element.ALIGN_LEFT));
+                employeesTable.addCell(createPdfCell(payment.getEmployee().getDepartment().getName(), normalFont, Element.ALIGN_LEFT));
+                employeesTable.addCell(createPdfCell(payment.getPaymentType().getName(), normalFont, Element.ALIGN_LEFT));
+                employeesTable.addCell(createPdfCell(String.format("%.2f руб.", payment.getAmount()), normalFont, Element.ALIGN_RIGHT));
+            }
+
+            document.add(employeesTable);
+        }
+
+        Paragraph signature = new Paragraph("\n\nДата формирования: " +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), smallFont);
+        document.add(signature);
+
+        Paragraph footer = new Paragraph("\nГлавный бухгалтер: _________________________", normalFont);
+        document.add(footer);
+
+        document.close();
+        return outputStream.toByteArray();
+    }
+
+    public byte[] generateTaxReportExcel(Integer month, Integer year) throws IOException {
+        List<Payment> taxPayments = paymentRepository.findTaxPaymentsByPeriod(month, year);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Налоговый отчет");
+
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle moneyStyle = createMoneyStyle(workbook);
+            CellStyle normalStyle = createNormalStyle(workbook);
+            CellStyle totalStyle = createTotalStyle(workbook);
+
+            Row titleRow = sheet.createRow(0);
+            titleRow.createCell(0).setCellValue("ОТЧЕТ ПО НАЛОГАМ И ВЗНОСАМ");
+
+            Row periodRow = sheet.createRow(1);
+            periodRow.createCell(0).setCellValue("За период: " + getMonthName(month) + " " + year);
+
+            int rowNum = 3;
+            if (!taxPayments.isEmpty()) {
+                BigDecimal totalTaxes = taxPayments.stream()
+                        .map(Payment::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                Row summaryRow1 = sheet.createRow(rowNum++);
+                summaryRow1.createCell(0).setCellValue("СВОДНАЯ СТАТИСТИКА:");
+
+                Row summaryRow2 = sheet.createRow(rowNum++);
+                summaryRow2.createCell(0).setCellValue("Общая сумма налогов:");
+                summaryRow2.createCell(1).setCellValue(totalTaxes.doubleValue());
+                summaryRow2.getCell(1).setCellStyle(moneyStyle);
+
+                Row summaryRow3 = sheet.createRow(rowNum++);
+                summaryRow3.createCell(0).setCellValue("Количество операций:");
+                summaryRow3.createCell(1).setCellValue(taxPayments.size());
+
+                rowNum++;
+            }
+
+            if (!taxPayments.isEmpty()) {
+                Row detailsTitle = sheet.createRow(rowNum++);
+                detailsTitle.createCell(0).setCellValue("ДЕТАЛИЗАЦИЯ ПО ВИДАМ НАЛОГОВ:");
+
+                Row detailsHeader = sheet.createRow(rowNum++);
+                String[] headers = {"Вид налога/взноса", "Количество операций", "Общая сумма"};
+                for (int i = 0; i < headers.length; i++) {
+                    Cell cell = detailsHeader.createCell(i);
+                    cell.setCellValue(headers[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+
+                Map<PaymentType, List<Payment>> taxesByType = taxPayments.stream()
+                        .collect(Collectors.groupingBy(Payment::getPaymentType));
+
+                for (Map.Entry<PaymentType, List<Payment>> entry : taxesByType.entrySet()) {
+                    Row row = sheet.createRow(rowNum++);
+                    PaymentType taxType = entry.getKey();
+                    List<Payment> typePayments = entry.getValue();
+                    BigDecimal typeTotal = typePayments.stream()
+                            .map(Payment::getAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    row.createCell(0).setCellValue(taxType.getName());
+                    row.createCell(1).setCellValue(typePayments.size());
+
+                    Cell amountCell = row.createCell(2);
+                    amountCell.setCellValue(typeTotal.doubleValue());
+                    amountCell.setCellStyle(moneyStyle);
+                }
+
+                rowNum++;
+            }
+
+            if (!taxPayments.isEmpty()) {
+                Row employeesTitle = sheet.createRow(rowNum++);
+                employeesTitle.createCell(0).setCellValue("ДЕТАЛИЗАЦИЯ ПО СОТРУДНИКАМ:");
+
+                Row employeesHeader = sheet.createRow(rowNum++);
+                String[] empHeaders = {"Сотрудник", "Отдел", "Должность", "Вид налога", "Сумма", "Дата"};
+                for (int i = 0; i < empHeaders.length; i++) {
+                    Cell cell = employeesHeader.createCell(i);
+                    cell.setCellValue(empHeaders[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+
+                for (Payment payment : taxPayments) {
+                    Row row = sheet.createRow(rowNum++);
+                    row.createCell(0).setCellValue(payment.getEmployee().getFullName());
+                    row.createCell(1).setCellValue(payment.getEmployee().getDepartment().getName());
+                    row.createCell(2).setCellValue(payment.getEmployee().getPosition().getTitle());
+                    row.createCell(3).setCellValue(payment.getPaymentType().getName());
+
+                    Cell amountCell = row.createCell(4);
+                    amountCell.setCellValue(payment.getAmount().doubleValue());
+                    amountCell.setCellStyle(moneyStyle);
+
+                    row.createCell(5).setCellValue(
+                            payment.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                    );
+                }
+            } else {
+                Row noData = sheet.createRow(rowNum++);
+                noData.createCell(0).setCellValue("Налоговые платежи за указанный период отсутствуют.");
+            }
+
+            for (int i = 0; i < 10; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        }
+    }
+
+    public byte[] generatePayslipPdf(Integer employeeId, Integer month, Integer year) throws DocumentException {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
+
+        List<Payment> payments = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+        List<Payment> accruals = payments.stream()
+                .filter(p -> "accrual".equals(p.getPaymentType().getCategory()))
+                .toList();
+        List<Payment> deductions = payments.stream()
+                .filter(p -> "deduction".equals(p.getPaymentType().getCategory()))
+                .toList();
+
+        BigDecimal totalAccruals = accruals.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalDeductions = deductions.stream()
+                .map(p -> p.getAmount().abs())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal netSalary = totalAccruals.subtract(totalDeductions);
+
+        Document document = new Document();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        PdfWriter.getInstance(document, outputStream);
+
+        document.open();
+
+        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, BaseColor.BLACK);
+        Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK);
+        Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 9, BaseColor.BLACK);
+        Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 8, BaseColor.DARK_GRAY);
+        Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK);
+
+        Paragraph title = new Paragraph("РАСЧЕТНЫЙ ЛИСТОК", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(10);
+        document.add(title);
+
+        Paragraph period = new Paragraph("за " + getMonthName(month) + " " + year, headerFont);
+        period.setAlignment(Element.ALIGN_CENTER);
+        period.setSpacingAfter(20);
+        document.add(period);
+
+        PdfPTable infoTable = new PdfPTable(2);
+        infoTable.setWidthPercentage(100);
+        infoTable.setSpacingAfter(15);
+
+        infoTable.addCell(createPdfCell("Сотрудник:", normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell(employee.getFullName(), normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell("Должность:", normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell(employee.getPosition().getTitle(), normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell("Отдел:", normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell(employee.getDepartment().getName(), normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell("Табельный номер:", normalFont, Element.ALIGN_LEFT));
+        infoTable.addCell(createPdfCell(String.valueOf(employee.getId()), normalFont, Element.ALIGN_LEFT));
+
+        document.add(infoTable);
+
+        Paragraph accrualsTitle = new Paragraph("НАЧИСЛЕНИЯ", headerFont);
+        accrualsTitle.setSpacingAfter(10);
+        document.add(accrualsTitle);
+
+        PdfPTable accrualsTable = new PdfPTable(2);
+        accrualsTable.setWidthPercentage(80);
+        accrualsTable.setHorizontalAlignment(Element.ALIGN_LEFT);
+        accrualsTable.setSpacingAfter(15);
+
+        for (Payment payment : accruals) {
+            accrualsTable.addCell(createPdfCell(payment.getPaymentType().getName(), normalFont, Element.ALIGN_LEFT));
+            accrualsTable.addCell(createPdfCell(String.format("%.2f руб.", payment.getAmount()), normalFont, Element.ALIGN_RIGHT));
+        }
+
+        accrualsTable.addCell(createPdfCell("Итого начислено:", totalFont, Element.ALIGN_LEFT));
+        accrualsTable.addCell(createPdfCell(String.format("%.2f руб.", totalAccruals), totalFont, Element.ALIGN_RIGHT));
+
+        document.add(accrualsTable);
+
+        Paragraph deductionsTitle = new Paragraph("УДЕРЖАНИЯ", headerFont);
+        deductionsTitle.setSpacingAfter(10);
+        document.add(deductionsTitle);
+
+        PdfPTable deductionsTable = new PdfPTable(2);
+        deductionsTable.setWidthPercentage(80);
+        deductionsTable.setHorizontalAlignment(Element.ALIGN_LEFT);
+        deductionsTable.setSpacingAfter(15);
+
+        for (Payment payment : deductions) {
+            deductionsTable.addCell(createPdfCell(payment.getPaymentType().getName(), normalFont, Element.ALIGN_LEFT));
+            deductionsTable.addCell(createPdfCell(String.format("%.2f руб.", payment.getAmount().abs()), normalFont, Element.ALIGN_RIGHT));
+        }
+
+        deductionsTable.addCell(createPdfCell("Итого удержано:", totalFont, Element.ALIGN_LEFT));
+        deductionsTable.addCell(createPdfCell(String.format("%.2f руб.", totalDeductions), totalFont, Element.ALIGN_RIGHT));
+
+        document.add(deductionsTable);
+
+        Paragraph finalTitle = new Paragraph("ИТОГОВЫЙ РАСЧЕТ", headerFont);
+        finalTitle.setSpacingAfter(10);
+        document.add(finalTitle);
+
+        PdfPTable finalTable = new PdfPTable(2);
+        finalTable.setWidthPercentage(60);
+        finalTable.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+        finalTable.addCell(createPdfCell("Начислено всего:", normalFont, Element.ALIGN_LEFT));
+        finalTable.addCell(createPdfCell(String.format("%.2f руб.", totalAccruals), normalFont, Element.ALIGN_RIGHT));
+        finalTable.addCell(createPdfCell("Удержано всего:", normalFont, Element.ALIGN_LEFT));
+        finalTable.addCell(createPdfCell(String.format("%.2f руб.", totalDeductions), normalFont, Element.ALIGN_RIGHT));
+
+        PdfPCell lineCell = new PdfPCell(new Phrase(""));
+        lineCell.setBorder(PdfPCell.TOP);
+        lineCell.setColspan(2);
+        lineCell.setFixedHeight(1f);
+        finalTable.addCell(lineCell);
+
+        finalTable.addCell(createPdfCell("К ВЫПЛАТЕ:", totalFont, Element.ALIGN_LEFT));
+        finalTable.addCell(createPdfCell(String.format("%.2f руб.", netSalary), totalFont, Element.ALIGN_RIGHT));
+
+        document.add(finalTable);
+
+        Paragraph signature = new Paragraph("\n\nДата формирования: " +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")), smallFont);
+        document.add(signature);
+
+        Paragraph accountant = new Paragraph("\nБухгалтер: _________________________", normalFont);
+        document.add(accountant);
+
+        Paragraph received = new Paragraph("\nС расчетом ознакомлен: _________________________", normalFont);
+        document.add(received);
+
+        document.close();
+        return outputStream.toByteArray();
+    }
+
+    private CellStyle createHeaderStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
+    }
+
+    private CellStyle createMoneyStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private CellStyle createNormalStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private CellStyle createTotalStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
     }
 }

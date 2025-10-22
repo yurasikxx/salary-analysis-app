@@ -6,22 +6,82 @@
 </head>
 <body th:replace="layout :: html(
     title='Управление пользователями',
+    icon='bi-people',
+    actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
 )">
 
+<div id="actions">
+    <a th:href="@{/admin/users/create}" class="btn btn-primary">
+        <i class="bi bi-person-plus"></i> Создать пользователя
+    </a>
+</div>
+
 <div id="content">
-    <!-- Заголовок и кнопка создания -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">
-            <i class="bi bi-people"></i> Управление пользователями
-        </h1>
-        <a th:href="@{/admin/users/create}" class="btn btn-primary">
-            <i class="bi bi-person-plus"></i> Создать пользователя
-        </a>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Всего пользователей</h6>
+                            <h3 th:text="${#lists.size(users)}">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Активных</h6>
+                            <h3 th:text="${#lists.select(users, #users.isActive)}.size()">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-person-check fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Неактивных</h6>
+                            <h3 th:text="${#lists.size(users) - #lists.select(users, #users.isActive)}.size()">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-person-x fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Ролей в системе</h6>
+                            <h3>5</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-shield-check fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Таблица пользователей -->
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">
@@ -50,20 +110,20 @@
                             <strong th:text="${user.username}"></strong>
                         </td>
                         <td>
-                                <span th:if="${user.employee}"
-                                      th:text="${user.employee.fullName + ' (' + user.employee.department.name + ')'}">
-                                </span>
+                            <span th:if="${user.employee}"
+                                  th:text="${user.employee.fullName + ' (' + user.employee.department.name + ')'}">
+                            </span>
                             <span th:unless="${user.employee}" class="text-muted">—</span>
                         </td>
                         <td>
-                                <span th:switch="${user.role.name}">
-                                    <span th:case="'ADMIN'" class="badge bg-danger">Администратор</span>
-                                    <span th:case="'HR'" class="badge bg-warning">Кадры</span>
-                                    <span th:case="'RATESETTER'" class="badge bg-primary">Нормировщик</span>
-                                    <span th:case="'ACCOUNTANT'" class="badge bg-success">Бухгалтер</span>
-                                    <span th:case="'ANALYST'" class="badge bg-info">Аналитик</span>
-                                    <span th:case="*" class="badge bg-secondary" th:text="${user.role.name}"></span>
-                                </span>
+                            <span th:switch="${user.role.name}">
+                                <span th:case="'ADMIN'" class="badge bg-danger">Администратор</span>
+                                <span th:case="'HR'" class="badge bg-warning">Кадры</span>
+                                <span th:case="'RATESETTER'" class="badge bg-primary">Нормировщик</span>
+                                <span th:case="'ACCOUNTANT'" class="badge bg-success">Бухгалтер</span>
+                                <span th:case="'ANALYST'" class="badge bg-info">Аналитик</span>
+                                <span th:case="*" class="badge bg-secondary" th:text="${user.role.name}"></span>
+                            </span>
                         </td>
                         <td>
                             <span th:if="${user.isActive}" class="badge bg-success">Активен</span>
@@ -121,49 +181,11 @@
             </div>
         </div>
     </div>
-
-    <!-- Статистика -->
-    <div class="row mt-4">
-        <div class="col-md-3">
-            <div class="card bg-light">
-                <div class="card-body text-center">
-                    <h6 class="card-title">Всего пользователей</h6>
-                    <h3 th:text="${#lists.size(users)}" class="text-primary">0</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-light">
-                <div class="card-body text-center">
-                    <h6 class="card-title">Активных</h6>
-                    <h3 th:text="${#lists.select(users, #users.isActive)}.size()" class="text-success">0</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-light">
-                <div class="card-body text-center">
-                    <h6 class="card-title">Неактивных</h6>
-                    <h3 th:text="${#lists.size(users) - #lists.select(users, #users.isActive)}.size()"
-                        class="text-warning">0</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-light">
-                <div class="card-body text-center">
-                    <h6 class="card-title">Ролей в системе</h6>
-                    <h3 class="text-info">5</h3>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div id="scripts">
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Автоматическое закрытие алертов
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {

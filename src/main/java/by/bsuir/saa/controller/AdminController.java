@@ -9,6 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/admin")
@@ -30,6 +31,8 @@ public class AdminController {
         long totalEmployees = employeeService.getAllEmployees().size();
         long activeEmployees = employeeService.getActiveEmployees().size();
 
+        model.addAttribute("title", "Панель администратора");
+        model.addAttribute("icon", "bi-shield-check");
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("activeUsers", activeUsers);
         model.addAttribute("inactiveUsers", totalUsers - activeUsers);
@@ -42,12 +45,16 @@ public class AdminController {
     @GetMapping("/users")
     public String usersPage(Model model) {
         List<User> users = userManagementService.getActiveUsers();
+        model.addAttribute("title", "Управление пользователями");
+        model.addAttribute("icon", "bi-people");
         model.addAttribute("users", users);
         return "admin/users";
     }
 
     @GetMapping("/users/create")
     public String createUserForm(Model model) {
+        model.addAttribute("title", "Создание пользователя");
+        model.addAttribute("icon", "bi-person-plus");
         model.addAttribute("roles", List.of("ADMIN", "HR", "RATESETTER", "ACCOUNTANT", "ANALYST"));
         model.addAttribute("employees", employeeService.getAllEmployees());
         return "admin/create-user";
@@ -58,8 +65,12 @@ public class AdminController {
                              @RequestParam String password,
                              @RequestParam(required = false) Integer employeeId,
                              @RequestParam String role) {
-        userManagementService.createUser(username, password, employeeId, role);
-        return "redirect:/admin/users?success=User created";
+        try {
+            userManagementService.createUser(username, password, employeeId, role);
+            return "redirect:/admin/users?success=Пользователь успешно создан";
+        } catch (Exception e) {
+            return "redirect:/admin/users/create?error=" + e.getMessage();
+        }
     }
 
     @GetMapping("/users/{id}/edit")
@@ -67,7 +78,10 @@ public class AdminController {
         User user = userManagementService.getAllUsers().stream()
                 .filter(u -> u.getId().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        model.addAttribute("title", "Редактирование пользователя");
+        model.addAttribute("icon", "bi-pencil");
         model.addAttribute("user", user);
         model.addAttribute("roles", List.of("ADMIN", "HR", "RATESETTER", "ACCOUNTANT", "ANALYST"));
         return "admin/edit-user";
@@ -78,38 +92,62 @@ public class AdminController {
                              @RequestParam String username,
                              @RequestParam String role,
                              @RequestParam Boolean isActive) {
-        userManagementService.updateUser(id, username, role, isActive);
-        return "redirect:/admin/users?success=User updated";
+        try {
+            userManagementService.updateUser(id, username, role, isActive);
+            return "redirect:/admin/users?success=Пользователь успешно обновлен";
+        } catch (Exception e) {
+            return "redirect:/admin/users/" + id + "/edit?error=" + e.getMessage();
+        }
     }
 
     @PostMapping("/users/{id}/deactivate")
     public String deactivateUser(@PathVariable Integer id) {
-        userManagementService.deactivateUser(id);
-        return "redirect:/admin/users?success=User deactivated";
-    }
-
-    @GetMapping("/system")
-    public String systemSettings(Model model) {
-        // Здесь можно добавить настройки системы
-        return "admin/system-settings";
-    }
-
-    @GetMapping("/audit")
-    public String auditLog(Model model) {
-        // Здесь можно добавить журнал событий
-        return "admin/audit-log";
+        try {
+            userManagementService.deactivateUser(id);
+            return "redirect:/admin/users?success=Пользователь деактивирован";
+        } catch (Exception e) {
+            return "redirect:/admin/users?error=" + e.getMessage();
+        }
     }
 
     @PostMapping("/users/{id}/activate")
     public String activateUser(@PathVariable Integer id) {
-        userManagementService.updateUser(id, null, null, true);
-        return "redirect:/admin/users?success=User activated";
+        try {
+            userManagementService.updateUser(id, null, null, true);
+            return "redirect:/admin/users?success=Пользователь активирован";
+        } catch (Exception e) {
+            return "redirect:/admin/users?error=" + e.getMessage();
+        }
     }
 
     @PostMapping("/users/{id}/change-password")
     public String changePassword(@PathVariable Integer id,
                                  @RequestParam String newPassword) {
-        userManagementService.changePassword(id, newPassword);
-        return "redirect:/admin/users?success=Password changed";
+        try {
+            userManagementService.changePassword(id, newPassword);
+            return "redirect:/admin/users?success=Пароль успешно изменен";
+        } catch (Exception e) {
+            return "redirect:/admin/users/" + id + "/edit?error=" + e.getMessage();
+        }
     }
+
+    @GetMapping("/system")
+    public String systemSettings(Model model) {
+        model.addAttribute("title", "Настройки системы");
+        model.addAttribute("icon", "bi-gear");
+        return "admin/system-settings";
+    }
+
+    @GetMapping("/audit")
+    public String auditLog(Model model) {
+        model.addAttribute("title", "Журнал событий");
+        model.addAttribute("icon", "bi-clock-history");
+        return "admin/audit-log";
+    }
+
+/*    @GetMapping("/api/users/stats")
+    @ResponseBody
+    public Map<String, Long> getUserStats() {
+        return userManagementService.getUserStatisticsByRole();
+    }*/
 }

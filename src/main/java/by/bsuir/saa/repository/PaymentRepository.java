@@ -59,4 +59,36 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     @Query("SELECT COUNT(DISTINCT p.employee.id) FROM Payment p WHERE p.month = :month AND p.year = :year AND p.paymentType.category = 'accrual'")
     Long countEmployeesWithAccruals(@Param("month") Integer month,
                                     @Param("year") Integer year);
+
+    @Query("SELECT p FROM Payment p " +
+            "WHERE p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction' " +
+            "ORDER BY p.employee.fullName, p.paymentType.name")
+    List<Payment> findTaxPaymentsByPeriod(@Param("month") Integer month,
+                                          @Param("year") Integer year);
+
+    @Query("SELECT p FROM Payment p " +
+            "WHERE p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction' " +
+            "AND p.employee.department.id = :departmentId " +
+            "ORDER BY p.employee.fullName, p.paymentType.name")
+    List<Payment> findTaxPaymentsByDepartmentAndPeriod(@Param("departmentId") Integer departmentId,
+                                                       @Param("month") Integer month,
+                                                       @Param("year") Integer year);
+
+    @Query("SELECT COALESCE(SUM(ABS(p.amount)), 0) FROM Payment p " +
+            "WHERE p.employee.id = :employeeId AND p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction'")
+    BigDecimal sumTaxesByEmployeeAndPeriod(@Param("employeeId") Integer employeeId,
+                                           @Param("month") Integer month,
+                                           @Param("year") Integer year);
+
+    @Query("SELECT p.paymentType, COUNT(p), SUM(ABS(p.amount)) " +
+            "FROM Payment p " +
+            "WHERE p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction' " +
+            "GROUP BY p.paymentType " +
+            "ORDER BY SUM(ABS(p.amount)) DESC")
+    List<Object[]> findTaxStatisticsByType(@Param("month") Integer month,
+                                           @Param("year") Integer year);
 }

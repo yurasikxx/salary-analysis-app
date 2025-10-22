@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6" lang="ru">
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${title} + ' - Расчёт и анализ заработной платы'">Расчёт и анализ заработной платы</title>
+    <title th:text="${title} + ' - Система расчёта заработной платы'">Система расчёта заработной платы</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
@@ -15,22 +16,31 @@
             background-color: #f8f9fa;
             border-right: 1px solid #dee2e6;
         }
+
         .nav-link {
             color: #495057;
             padding: 0.75rem 1rem;
             border-radius: 0.375rem;
             margin: 0.125rem 0;
         }
+
         .nav-link:hover, .nav-link.active {
             background-color: #e9ecef;
-            color: #0d6efd;
+            color: #6c757d;
         }
+
         .navbar-brand {
             font-weight: 600;
         }
-        .role-badge {
-            font-size: 0.7em;
-            margin-left: 0.5rem;
+
+        .stat-card {
+            transition: transform 0.2s;
+            border: none;
+            border-left: 4px solid #6c757d;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -38,7 +48,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" th:href="@{/}">
-            <i class="bi bi-graph-up"></i> Salary Analysis System
+            <i class="bi bi-graph-up"></i> Система расчёта заработной платы
         </a>
 
         <div class="navbar-nav ms-auto">
@@ -46,17 +56,19 @@
                     <i class="bi bi-person-circle"></i>
                     <span sec:authentication="name"></span>
                     <small class="text-muted ms-2">
-                        <span sec:authentication="principal.authorities" th:each="authority : ${#authentication.principal.authorities}">
-                            <span th:if="${#strings.contains(authority, 'ANALYST')}" class="badge bg-info role-badge">Аналитик</span>
-                            <span th:if="${#strings.contains(authority, 'ACCOUNTANT')}" class="badge bg-success role-badge">Бухгалтер</span>
-                            <span th:if="${#strings.contains(authority, 'HR')}" class="badge bg-warning role-badge">Кадры</span>
-                            <span th:if="${#strings.contains(authority, 'RATESETTER')}" class="badge bg-primary role-badge">Нормировщик</span>
-                            <span th:if="${#strings.contains(authority, 'ADMIN')}" class="badge bg-danger role-badge">Админ</span>
+                        <span sec:authentication="principal.authorities"
+                              th:each="authority : ${#authentication.principal.authorities}">
+                            <span th:if="${#strings.contains(authority, 'ANALYST')}"
+                                  class="badge bg-info">Аналитик</span>
+                            <span th:if="${#strings.contains(authority, 'ACCOUNTANT')}" class="badge bg-success">Бухгалтер</span>
+                            <span th:if="${#strings.contains(authority, 'HR')}" class="badge bg-warning">Кадры</span>
+                            <span th:if="${#strings.contains(authority, 'RATESETTER')}" class="badge bg-primary">Нормировщик</span>
+                            <span th:if="${#strings.contains(authority, 'ADMIN')}"
+                                  class="badge bg-danger">Администратор</span>
                         </span>
                     </small>
                 </span>
 
-            <!-- Используем форму для logout с CSRF токеном -->
             <form th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()" class="d-inline">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <button type="submit" class="btn btn-outline-light btn-sm">
@@ -67,122 +79,44 @@
     </div>
 </nav>
 
-<!-- Остальной код без изменений -->
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" sec:authorize="isAuthenticated()">
             <div class="position-sticky pt-3">
                 <ul class="nav flex-column">
-                    <!-- Общие ссылки -->
                     <li class="nav-item">
                         <a class="nav-link" th:href="@{/dashboard}">
                             <i class="bi bi-speedometer2"></i> Главная
                         </a>
                     </li>
 
-                    <!-- Аналитик -->
                     <li class="nav-item" sec:authorize="hasRole('ANALYST')">
                         <a class="nav-link" th:href="@{/analyst/dashboard}">
-                            <i class="bi bi-speedometer2"></i> Дашборд аналитика
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
-                        <a class="nav-link" th:href="@{/analyst/department-comparison}">
-                            <i class="bi bi-bar-chart"></i> Сравнение отделов
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
-                        <a class="nav-link" th:href="@{/analyst/salary-dynamics}">
-                            <i class="bi bi-graph-up"></i> Динамика зарплат
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
-                        <a class="nav-link" th:href="@{/analyst/payment-structure}">
-                            <i class="bi bi-pie-chart"></i> Структура выплат
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
-                        <a class="nav-link" th:href="@{/analyst/top-employees}">
-                            <i class="bi bi-trophy"></i> Топ сотрудников
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
-                        <a class="nav-link" th:href="@{/analyst/trend-analysis}">
-                            <i class="bi bi-arrow-trend-up"></i> Анализ трендов
+                            <i class="bi bi-bar-chart"></i> Аналитика
                         </a>
                     </li>
 
-                    <!-- Бухгалтер -->
                     <li class="nav-item" sec:authorize="hasRole('ACCOUNTANT')">
                         <a class="nav-link" th:href="@{/accountant/dashboard}">
-                            <i class="bi bi-speedometer2"></i> Дашборд бухгалтера
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ACCOUNTANT')">
-                        <a class="nav-link" th:href="@{/accountant/deductions}">
-                            <i class="bi bi-calculator"></i> Удержания
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ACCOUNTANT')">
-                        <a class="nav-link" th:href="@{/accountant/payments}">
-                            <i class="bi bi-cash-stack"></i> Все платежи
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ACCOUNTANT')">
-                        <a class="nav-link" th:href="@{/accountant/reports}">
-                            <i class="bi bi-file-text"></i> Отчеты
+                            <i class="bi bi-calculator"></i> Бухгалтерия
                         </a>
                     </li>
 
-                    <!-- Кадры (HR) -->
                     <li class="nav-item" sec:authorize="hasRole('HR')">
                         <a class="nav-link" th:href="@{/hr/dashboard}">
-                            <i class="bi bi-speedometer2"></i> Дашборд кадров
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('HR')">
-                        <a class="nav-link" th:href="@{/hr/employees}">
-                            <i class="bi bi-person-badge"></i> Сотрудники
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('HR')">
-                        <a class="nav-link" th:href="@{/hr/timesheets}">
-                            <i class="bi bi-calendar-check"></i> Табели
+                            <i class="bi bi-people"></i> Кадры
                         </a>
                     </li>
 
-                    <!-- Нормировщик -->
                     <li class="nav-item" sec:authorize="hasRole('RATESETTER')">
                         <a class="nav-link" th:href="@{/ratesetter/dashboard}">
-                            <i class="bi bi-speedometer2"></i> Дашборд нормировщика
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('RATESETTER')">
-                        <a class="nav-link" th:href="@{/ratesetter/calculations}">
-                            <i class="bi bi-calculator"></i> Расчет начислений
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('RATESETTER')">
-                        <a class="nav-link" th:href="@{/ratesetter/reports}">
-                            <i class="bi bi-file-text"></i> Отчеты
+                            <i class="bi bi-gear"></i> Нормирование
                         </a>
                     </li>
 
-                    <!-- Администратор -->
                     <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                         <a class="nav-link" th:href="@{/admin/dashboard}">
-                            <i class="bi bi-speedometer2"></i> Дашборд администратора
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/users}">
-                            <i class="bi bi-people"></i> Пользователи
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/system}">
-                            <i class="bi bi-gear"></i> Настройки системы
+                            <i class="bi bi-shield-check"></i> Администрирование
                         </a>
                     </li>
                 </ul>
@@ -190,9 +124,14 @@
         </nav>
 
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <!-- Page title -->
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2" th:text="${title}">Заголовок страницы</h1>
+                <h1 class="h2">
+                    <i th:if="${icon}" th:class="'bi ' + ${icon}"></i>
+                    <span th:text="${title}">Заголовок страницы</span>
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div th:replace="${actions} ?: ~{}"></div>
+                </div>
             </div>
 
             <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -207,23 +146,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
 
-            <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill"></i>
-                <span th:text="${success}"></span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-
-            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                <span th:text="${error}"></span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-
             <div th:replace="${content}">Содержимое страницы</div>
         </main>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 5000);
+        });
+    });
+</script>
+
+<div th:replace="${scripts} ?: ~{}"></div>
 </body>
 </html>

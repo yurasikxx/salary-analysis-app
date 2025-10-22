@@ -40,16 +40,15 @@ public class RatesetterController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(@RequestParam(defaultValue = "9") Integer month,
-                            @RequestParam(defaultValue = "2025") Integer year,
+    public String dashboard(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                             Model model) {
 
         model.addAttribute("title", "Дашборд нормировщика");
-        model.addAttribute("icon", "bi-calculator");
+        model.addAttribute("icon", "bi-speedometer2");
         model.addAttribute("month", month);
         model.addAttribute("year", year);
 
-        // Статистика для дашборда
         long totalEmployees = employeeService.getActiveEmployees().size();
         long employeesWithCalculations = paymentService.getEmployeesWithCalculationsCount(month, year);
 
@@ -70,8 +69,8 @@ public class RatesetterController {
     }
 
     @GetMapping("/calculations")
-    public String calculationsPage(@RequestParam(defaultValue = "9") Integer month,
-                                   @RequestParam(defaultValue = "2025") Integer year,
+    public String calculationsPage(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                   @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                    @RequestParam(required = false) Integer departmentId,
                                    Model model) {
 
@@ -88,6 +87,8 @@ public class RatesetterController {
         List<Department> departments = departmentService.getAllDepartments();
         List<PaymentType> bonusTypes = paymentTypeService.getAccrualTypes();
 
+        model.addAttribute("title", "Расчет заработной платы");
+        model.addAttribute("icon", "bi-calculator");
         model.addAttribute("employees", activeEmployees);
         model.addAttribute("employeePayments", employeePayments);
         model.addAttribute("month", month);
@@ -158,7 +159,11 @@ public class RatesetterController {
             return redirectUrl;
 
         } catch (Exception e) {
-            return "redirect:/ratesetter/calculations?month=" + month + "&year=" + year + "&error=" + e.getMessage();
+            String redirectUrl = "redirect:/ratesetter/calculations?month=" + month + "&year=" + year + "&error=" + e.getMessage();
+            if (departmentId != null) {
+                redirectUrl += "&departmentId=" + departmentId;
+            }
+            return redirectUrl;
         }
     }
 
@@ -176,8 +181,8 @@ public class RatesetterController {
     }
 
     @GetMapping("/reports")
-    public String reportsPage(@RequestParam(defaultValue = "9") Integer month,
-                              @RequestParam(defaultValue = "2025") Integer year,
+    public String reportsPage(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                              @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                               @RequestParam(required = false) Integer departmentId,
                               Model model) {
 
@@ -202,6 +207,8 @@ public class RatesetterController {
         List<Department> departments = departmentService.getAllDepartments();
         List<PaymentType> paymentTypes = paymentTypeService.getAllPaymentTypes();
 
+        model.addAttribute("title", "Отчеты по заработной плате");
+        model.addAttribute("icon", "bi-file-text");
         model.addAttribute("payments", payments);
         model.addAttribute("month", month);
         model.addAttribute("year", year);
@@ -217,8 +224,8 @@ public class RatesetterController {
 
     @GetMapping("/employee/{id}/calculations")
     public String employeeCalculations(@PathVariable Integer id,
-                                       @RequestParam(defaultValue = "9") Integer month,
-                                       @RequestParam(defaultValue = "2025") Integer year,
+                                       @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                       @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                        Model model) {
         Employee employee = employeeService.getEmployeeById(id)
                 .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
@@ -237,6 +244,8 @@ public class RatesetterController {
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        model.addAttribute("title", "Расчет зарплаты сотрудника");
+        model.addAttribute("icon", "bi-person-badge");
         model.addAttribute("employee", employee);
         model.addAttribute("payments", employeePayments);
         model.addAttribute("bonusTypes", bonusTypes);
@@ -247,5 +256,25 @@ public class RatesetterController {
         model.addAttribute("netSalary", totalAccruals.subtract(totalDeductions));
 
         return "ratesetter/employee-calculations";
+    }
+
+    @PostMapping("/calculations/recalculate-department")
+    public String recalculateDepartment(@RequestParam Integer month,
+                                        @RequestParam Integer year,
+                                        @RequestParam Integer departmentId) {
+        try {
+            List<Employee> employees = employeeService.getActiveEmployeesByDepartment(departmentId);
+
+            for (Employee employee : employees) {
+                salaryCalculationService.calculateBasicSalary(employee, month, year);
+            }
+
+            return "redirect:/ratesetter/calculations?month=" + month + "&year=" + year +
+                    "&departmentId=" + departmentId + "&success=Расчет завершен для отдела";
+
+        } catch (Exception e) {
+            return "redirect:/ratesetter/calculations?month=" + month + "&year=" + year +
+                    "&departmentId=" + departmentId + "&error=" + e.getMessage();
+        }
     }
 }

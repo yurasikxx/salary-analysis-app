@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Расчет зарплаты сотрудника - Расчёт и анализ заработной платы</title>
+    <title>Расчет зарплаты сотрудника - Нормировщик</title>
 </head>
 <body th:replace="ratesetter/base :: html(
     title='Расчет зарплаты сотрудника',
@@ -35,20 +35,41 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6">
-                    <p><strong>ФИО:</strong> <span th:text="${employee.fullName}"></span></p>
-                    <p><strong>Должность:</strong> <span th:text="${employee.position.title}"></span></p>
-                    <p><strong>Базовый оклад:</strong> <span th:text="${employee.position.baseSalary} + ' руб.'"></span>
-                    </p>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="fw-bold" width="40%">ФИО:</td>
+                            <td th:text="${employee.fullName}"></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Должность:</td>
+                            <td th:text="${employee.position.title}"></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Оклад:</td>
+                            <td th:text="${employee.position.baseSalary + ' руб.'}"></td>
+                        </tr>
+                    </table>
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Отдел:</strong> <span th:text="${employee.department.name}"></span></p>
-                    <p><strong>Период расчета:</strong>
-                        <span th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></span>
-                    </p>
-                    <p><strong>Статус:</strong>
-                        <span th:if="${employee.terminationDate == null}" class="badge bg-success">Активен</span>
-                        <span th:unless="${employee.terminationDate == null}" class="badge bg-secondary">Уволен</span>
-                    </p>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="fw-bold" width="40%">Отдел:</td>
+                            <td th:text="${employee.department.name}"></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Период расчета:</td>
+                            <td th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Статус:</td>
+                            <td>
+                                <span th:if="${employee.terminationDate == null}"
+                                      class="badge bg-success">Активен</span>
+                                <span th:unless="${employee.terminationDate == null}"
+                                      class="badge bg-secondary">Уволен</span>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
@@ -60,7 +81,7 @@
                 <div class="card-body text-center">
                     <i class="bi bi-cash-coin fs-1 mb-2"></i>
                     <h6 class="card-title">Всего начислено</h6>
-                    <h3 th:text="${totalAccruals} + ' руб.'">0 руб.</h3>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(totalAccruals, 1, 2)}">0 руб.</h3>
                 </div>
             </div>
         </div>
@@ -69,7 +90,7 @@
                 <div class="card-body text-center">
                     <i class="bi bi-arrow-down-circle fs-1 mb-2"></i>
                     <h6 class="card-title">Всего удержано</h6>
-                    <h3 th:text="${totalDeductions} + ' руб.'">0 руб.</h3>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(totalDeductions, 1, 2)}">0 руб.</h3>
                 </div>
             </div>
         </div>
@@ -78,15 +99,13 @@
                 <div class="card-body text-center">
                     <i class="bi bi-wallet2 fs-1 mb-2"></i>
                     <h6 class="card-title">К выплате</h6>
-                    <h3 th:text="${netSalary} + ' руб.'">0 руб.</h3>
+                    <h3 th:text="${'₽' + #numbers.formatDecimal(netSalary, 1, 2)}">0 руб.</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Детализация расчетов -->
     <div class="row">
-        <!-- Начисления -->
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -105,21 +124,23 @@
                             <thead>
                             <tr>
                                 <th>Тип</th>
-                                <th>Сумма</th>
+                                <th class="text-end">Сумма</th>
                                 <th>Описание</th>
-                                <th></th>
+                                <th width="80"></th>
                             </tr>
                             </thead>
                             <tbody>
-                            <!-- Исправленный синтаксис -->
                             <tr th:each="payment : ${payments}"
                                 th:if="${payment.paymentType.category == 'accrual'}">
                                 <td th:text="${payment.paymentType.name}"></td>
-                                <td class="text-success fw-bold" th:text="'+' + ${payment.amount} + ' руб.'"></td>
+                                <td class="text-success fw-bold text-end"
+                                    th:text="${'+' + #numbers.formatDecimal(payment.amount, 1, 2) + ' руб.'}"></td>
                                 <td th:text="${payment.description}" class="small"></td>
-                                <td>
+                                <td class="text-center">
                                     <form th:action="@{/ratesetter/calculations/{id}/delete(id=${payment.id})}"
                                           method="post" style="display: inline;">
+                                        <input type="hidden" th:name="${_csrf.parameterName}"
+                                               th:value="${_csrf.token}"/>
                                         <input type="hidden" name="month" th:value="${month}">
                                         <input type="hidden" name="year" th:value="${year}">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -129,18 +150,17 @@
                                     </form>
                                 </td>
                             </tr>
-                            <!-- Исправленный синтаксис для проверки пустого списка -->
-                            <tr th:if="${#lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'accrual'}))}">
+                            <tr th:if="${#lists.isEmpty(#lists.select(payments, #lists.contains(#lists.extract(payments, 'paymentType.category'), 'accrual')))}">
                                 <td colspan="4" class="text-center text-muted py-3">
                                     <i class="bi bi-info-circle"></i> Начисления отсутствуют
                                 </td>
                             </tr>
                             </tbody>
-                            <!-- Исправленный синтаксис для футера -->
-                            <tfoot th:if="${not #lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'accrual'}))}">
+                            <tfoot th:if="${not #lists.isEmpty(#lists.select(payments, #lists.contains(#lists.extract(payments, 'paymentType.category'), 'accrual')))}">
                             <tr class="table-success fw-bold">
                                 <td>Итого начислений:</td>
-                                <td th:text="'+' + ${totalAccruals} + ' руб.'"></td>
+                                <td class="text-end"
+                                    th:text="${'+' + #numbers.formatDecimal(totalAccruals, 1, 2) + ' руб.'}"></td>
                                 <td colspan="2"></td>
                             </tr>
                             </tfoot>
@@ -150,7 +170,6 @@
             </div>
         </div>
 
-        <!-- Удержания -->
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
@@ -164,20 +183,23 @@
                             <thead>
                             <tr>
                                 <th>Тип</th>
-                                <th>Сумма</th>
+                                <th class="text-end">Сумма</th>
                                 <th>Описание</th>
-                                <th></th>
+                                <th width="80"></th>
                             </tr>
                             </thead>
                             <tbody>
                             <tr th:each="payment : ${payments}"
                                 th:if="${payment.paymentType.category == 'deduction'}">
                                 <td th:text="${payment.paymentType.name}"></td>
-                                <td class="text-danger fw-bold" th:text="'-' + ${payment.amount.abs()} + ' руб.'"></td>
+                                <td class="text-danger fw-bold text-end"
+                                    th:text="${'-' + #numbers.formatDecimal(payment.amount, 1, 2) + ' руб.'}"></td>
                                 <td th:text="${payment.description}" class="small"></td>
-                                <td>
+                                <td class="text-center">
                                     <form th:action="@{/ratesetter/calculations/{id}/delete(id=${payment.id})}"
                                           method="post" style="display: inline;">
+                                        <input type="hidden" th:name="${_csrf.parameterName}"
+                                               th:value="${_csrf.token}"/>
                                         <input type="hidden" name="month" th:value="${month}">
                                         <input type="hidden" name="year" th:value="${year}">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -187,18 +209,17 @@
                                     </form>
                                 </td>
                             </tr>
-                            <!-- Исправленный синтаксис -->
-                            <tr th:if="${#lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'deduction'}))}">
+                            <tr th:if="${#lists.isEmpty(#lists.select(payments, #lists.contains(#lists.extract(payments, 'paymentType.category'), 'deduction')))}">
                                 <td colspan="4" class="text-center text-muted py-3">
                                     <i class="bi bi-info-circle"></i> Удержания отсутствуют
                                 </td>
                             </tr>
                             </tbody>
-                            <!-- Исправленный синтаксис -->
-                            <tfoot th:if="${not #lists.isEmpty(#lists.select(payments, ${payment.paymentType.category == 'deduction'}))}">
+                            <tfoot th:if="${not #lists.isEmpty(#lists.select(payments, #lists.contains(#lists.extract(payments, 'paymentType.category'), 'deduction')))}">
                             <tr class="table-danger fw-bold">
                                 <td>Итого удержаний:</td>
-                                <td th:text="'-' + ${totalDeductions} + ' руб.'"></td>
+                                <td class="text-end"
+                                    th:text="${'-' + #numbers.formatDecimal(totalDeductions, 1, 2) + ' руб.'}"></td>
                                 <td colspan="2"></td>
                             </tr>
                             </tfoot>
@@ -221,15 +242,17 @@
                     <div class="row text-center">
                         <div class="col-md-4">
                             <h6>Начисления</h6>
-                            <h3 class="text-success" th:text="${totalAccruals} + ' руб.'"></h3>
+                            <h3 class="text-success"
+                                th:text="${'₽' + #numbers.formatDecimal(totalAccruals, 1, 2)}"></h3>
                         </div>
                         <div class="col-md-4">
                             <h6>Удержания</h6>
-                            <h3 class="text-danger" th:text="'-' + ${totalDeductions} + ' руб.'"></h3>
+                            <h3 class="text-danger"
+                                th:text="${'₽' + #numbers.formatDecimal(totalDeductions, 1, 2)}"></h3>
                         </div>
                         <div class="col-md-4">
                             <h6>К выплате</h6>
-                            <h3 class="text-primary" th:text="${netSalary} + ' руб.'"></h3>
+                            <h3 class="text-primary" th:text="${'₽' + #numbers.formatDecimal(netSalary, 1, 2)}"></h3>
                         </div>
                     </div>
                 </div>
@@ -246,6 +269,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form th:action="@{/ratesetter/calculations/bonus}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <input type="hidden" name="employeeId" th:value="${employee.id}">
                 <input type="hidden" name="month" th:value="${month}">
                 <input type="hidden" name="year" th:value="${year}">
@@ -290,7 +314,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {
@@ -302,7 +326,7 @@
 
         async function exportEmployeeToPDF() {
             try {
-                const { jsPDF } = window.jspdf;
+                const {jsPDF} = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const margin = 15;
@@ -311,15 +335,15 @@
 
                 pdf.setFontSize(16);
                 pdf.setFont('helvetica', 'bold');
-                pdf.text('РАСЧЕТНЫЙ ЛИСТОК', pageWidth / 2, currentY, { align: 'center' });
+                pdf.text('РАСЧЕТНЫЙ ЛИСТОК', pageWidth / 2, currentY, {align: 'center'});
                 currentY += 10;
 
                 pdf.setFontSize(12);
                 pdf.setFont('helvetica', 'normal');
-                const employeeName = document.querySelector('.card-body p:first-child strong + span')?.textContent || '';
-                const position = document.querySelector('.card-body p:nth-child(2) strong + span')?.textContent || '';
-                const department = document.querySelector('.card-body p:nth-child(3) strong + span')?.textContent || '';
-                const period = document.querySelector('.card-body p:nth-child(4) strong + span')?.textContent || '';
+                const employeeName = /*[[${employee.fullName}]]*/ '';
+                const position = /*[[${employee.position.title}]]*/ '';
+                const department = /*[[${employee.department.name}]]*/ '';
+                const period = /*[[${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}]]*/ '';
 
                 pdf.text(`Сотрудник: ${employeeName}`, margin, currentY);
                 currentY += 6;
@@ -333,19 +357,19 @@
                 currentY += 15;
 
                 pdf.setFont('helvetica', 'bold');
-                const totalAccruals = document.querySelector('.bg-success h3')?.textContent || '0 руб.';
-                const totalDeductions = document.querySelector('.bg-danger h3')?.textContent || '0 руб.';
-                const netSalary = document.querySelector('.bg-primary h3')?.textContent || '0 руб.';
+                const totalAccruals = /*[[${totalAccruals}]]*/ 0;
+                const totalDeductions = /*[[${totalDeductions}]]*/ 0;
+                const netSalary = /*[[${netSalary}]]*/ 0;
 
                 pdf.text('ИТОГИ РАСЧЕТА:', margin, currentY);
                 currentY += 8;
                 pdf.setFont('helvetica', 'normal');
-                pdf.text(`Начислено: ${totalAccruals}`, margin + 5, currentY);
+                pdf.text(`Начислено: ${totalAccruals.toLocaleString('ru-RU')} руб.`, margin + 5, currentY);
                 currentY += 6;
-                pdf.text(`Удержано: ${totalDeductions}`, margin + 5, currentY);
+                pdf.text(`Удержано: ${totalDeductions.toLocaleString('ru-RU')} руб.`, margin + 5, currentY);
                 currentY += 6;
                 pdf.setFont('helvetica', 'bold');
-                pdf.text(`К выплате: ${netSalary}`, margin + 5, currentY);
+                pdf.text(`К выплате: ${netSalary.toLocaleString('ru-RU')} руб.`, margin + 5, currentY);
                 currentY += 15;
 
                 const fileName = `calculation_${employeeName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;

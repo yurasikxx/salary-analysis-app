@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS timesheets
     month        INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
     year         INTEGER NOT NULL CHECK (year >= 2020),
     total_hours  NUMERIC(6, 2) DEFAULT 0,
-    status       VARCHAR(20)   DEFAULT 'draft' CHECK (status IN ('draft', 'confirmed')),
+    status       VARCHAR(20)   DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'CONFIRMED')),
     confirmed_by INTEGER REFERENCES users (id),
     confirmed_at TIMESTAMP,
     created_at   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS salary_payments
     total_deducted   NUMERIC(10, 2) DEFAULT 0,
     net_salary       NUMERIC(10, 2) DEFAULT 0,
     calculation_date TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
-    status           VARCHAR(20)    DEFAULT 'calculated' CHECK (status IN ('calculated', 'paid')),
+    status           VARCHAR(20)    DEFAULT 'CALCULATED' CHECK (status IN ('CALCULATED', 'PAID')),
     UNIQUE (employee_id, month, year)
 );
 

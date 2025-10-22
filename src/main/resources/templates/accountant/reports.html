@@ -2,15 +2,15 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Отчеты - Бухгалтер - Расчёт и анализ заработной платы</title>
+    <title>Отчеты - Бухгалтер</title>
 </head>
-<body th:replace="accountant/base :: html(
+<body th:replace="~{layout :: html(
     title='Генерация отчетов',
     icon='bi-file-text',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
-)">
+)}">
 
 <div id="actions">
     <div class="btn-group">
@@ -21,48 +21,31 @@
 </div>
 
 <div id="content">
-    <!-- Период и фильтры -->
     <div class="card mb-4">
-        <div class="card-body period-selector">
+        <div class="card-body">
             <form method="get" th:action="@{/accountant/reports}" class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label for="month" class="form-label">Месяц</label>
                     <select class="form-select" id="month" name="month">
-                        <option value="1" th:selected="${month == 1}">Январь</option>
-                        <option value="2" th:selected="${month == 2}">Февраль</option>
-                        <option value="3" th:selected="${month == 3}">Март</option>
-                        <option value="4" th:selected="${month == 4}">Апрель</option>
-                        <option value="5" th:selected="${month == 5}">Май</option>
-                        <option value="6" th:selected="${month == 6}">Июнь</option>
-                        <option value="7" th:selected="${month == 7}">Июль</option>
-                        <option value="8" th:selected="${month == 8}">Август</option>
-                        <option value="9" th:selected="${month == 9}">Сентябрь</option>
-                        <option value="10" th:selected="${month == 10}">Октябрь</option>
-                        <option value="11" th:selected="${month == 11}">Ноябрь</option>
-                        <option value="12" th:selected="${month == 12}">Декабрь</option>
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${month == m}"
+                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label for="year" class="form-label">Год</label>
                     <select class="form-select" id="year" name="year">
-                        <option value="2024" th:selected="${year == 2024}">2024</option>
-                        <option value="2025" th:selected="${year == 2025}">2025</option>
-                        <option value="2026" th:selected="${year == 2026}">2026</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="departmentId" class="form-label">Отдел (опционально)</label>
-                    <select class="form-select" id="departmentId" name="departmentId">
-                        <option value="">Все отделы</option>
-                        <option th:each="dept : ${departments}"
-                                th:value="${dept.id}"
-                                th:text="${dept.name}"
-                                th:selected="${departmentId == dept.id}">
+                        <option th:each="y : ${#numbers.sequence(2020, 2030)}"
+                                th:value="${y}"
+                                th:selected="${year == y}"
+                                th:text="${y}">
                         </option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-dark w-100">
                         <i class="bi bi-filter"></i> Применить
                     </button>
                 </div>
@@ -70,7 +53,6 @@
         </div>
     </div>
 
-    <!-- Статистика -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary">
@@ -110,9 +92,7 @@
         </div>
     </div>
 
-    <!-- Быстрый доступ к отчетам -->
     <div class="row">
-        <!-- Ведомость по зарплате -->
         <div class="col-md-6 col-lg-3 mb-4">
             <div class="card h-100">
                 <div class="card-body text-center">
@@ -135,7 +115,6 @@
             </div>
         </div>
 
-        <!-- Отчет по удержаниям -->
         <div class="col-md-6 col-lg-3 mb-4">
             <div class="card h-100">
                 <div class="card-body text-center">
@@ -158,7 +137,6 @@
             </div>
         </div>
 
-        <!-- Отчет по налогам -->
         <div class="col-md-6 col-lg-3 mb-4">
             <div class="card h-100">
                 <div class="card-body text-center">
@@ -181,7 +159,6 @@
             </div>
         </div>
 
-        <!-- Расчетные листки -->
         <div class="col-md-6 col-lg-3 mb-4">
             <div class="card h-100">
                 <div class="card-body text-center">
@@ -200,7 +177,6 @@
         </div>
     </div>
 
-    <!-- История генерации отчетов -->
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">
@@ -251,7 +227,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для генерации отчета -->
 <div class="modal fade" id="generateReportModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -287,7 +262,7 @@
                     </div>
 
                     <div id="departmentSelection" class="mb-3" style="display: none;">
-                        <label for="reportDepartmentId" class="form-label">Отдел (опционально)</label>
+                        <label for="reportDepartmentId" class="form-label">Отдел</label>
                         <select class="form-select" id="reportDepartmentId" name="departmentId">
                             <option value="">Все отделы</option>
                             <option th:each="dept : ${departments}"
@@ -306,7 +281,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для расчетных листков -->
 <div class="modal fade" id="payslipModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -324,7 +298,8 @@
                             <div>
                                 <strong th:text="${employee.fullName}"></strong>
                                 <br>
-                                <small class="text-muted" th:text="${employee.position.title} + ', ' + ${employee.department.name}"></small>
+                                <small class="text-muted"
+                                       th:text="${employee.position.title} + ', ' + ${employee.department.name}"></small>
                             </div>
                             <span class="badge bg-danger">PDF</span>
                         </a>
@@ -337,8 +312,7 @@
 
 <div id="scripts">
     <script>
-        // Показать/скрыть выбор сотрудника в зависимости от типа отчета
-        document.getElementById('reportType').addEventListener('change', function() {
+        document.getElementById('reportType').addEventListener('change', function () {
             const employeeSelection = document.getElementById('employeeSelection');
             const departmentSelection = document.getElementById('departmentSelection');
 
@@ -353,20 +327,8 @@
             }
         });
 
-        // Автоматическое закрытие алертов
-        document.addEventListener('DOMContentLoaded', function () {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
-            });
-        });
-
-        // Показать уведомление при скачивании
         document.querySelectorAll('a[href*="/reports/"]').forEach(link => {
-            link.addEventListener('click', function() {
+            link.addEventListener('click', function () {
                 const spinner = document.createElement('span');
                 spinner.className = 'spinner-border spinner-border-sm ms-2';
                 this.appendChild(spinner);

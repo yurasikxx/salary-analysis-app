@@ -8,7 +8,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,25 +22,22 @@ public class HrController {
     private final PositionService positionService;
     private final DepartmentService departmentService;
     private final UserManagementService userManagementService;
-    private final MarkTypeService markTypeService;
 
     public HrController(EmployeeService employeeService,
                         TimesheetService timesheetService,
                         PositionService positionService,
                         DepartmentService departmentService,
-                        UserManagementService userManagementService,
-                        MarkTypeService markTypeService) {
+                        UserManagementService userManagementService) {
         this.employeeService = employeeService;
         this.timesheetService = timesheetService;
         this.positionService = positionService;
         this.departmentService = departmentService;
         this.userManagementService = userManagementService;
-        this.markTypeService = markTypeService;
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(@RequestParam(defaultValue = "9") Integer month,
-                            @RequestParam(defaultValue = "2025") Integer year,
+    public String dashboard(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                             Model model) {
 
         model.addAttribute("title", "Дашборд кадровой службы");
@@ -49,13 +45,10 @@ public class HrController {
         model.addAttribute("month", month);
         model.addAttribute("year", year);
 
-        // Статистика для дашборда
         long totalEmployees = employeeService.getActiveEmployees().size();
         long totalDepartments = departmentService.getAllDepartments().size();
         long timesheetsConfirmed = timesheetService.getConfirmedTimesheetsCount(month, year);
         long timesheetsPending = timesheetService.getPendingTimesheetsCount(month, year);
-
-        // Новые сотрудники за последние 30 дней
         long newEmployees = employeeService.getNewEmployeesCount(LocalDate.now().minusDays(30));
 
         model.addAttribute("totalEmployees", totalEmployees);
@@ -71,6 +64,9 @@ public class HrController {
 
     @GetMapping("/employees")
     public String employeesPage(Model model) {
+        model.addAttribute("title", "Управление сотрудниками");
+        model.addAttribute("icon", "bi-people");
+
         List<Employee> employees = employeeService.getAllEmployees();
 
         long activeCount = employees.stream()
@@ -92,19 +88,27 @@ public class HrController {
 
     @GetMapping("/employees/{id}")
     public String employeeProfile(@PathVariable Integer id, Model model) {
+        model.addAttribute("title", "Профиль сотрудника");
+        model.addAttribute("icon", "bi-person-badge");
+
         Employee employee = employeeService.getEmployeeById(id)
                 .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
         model.addAttribute("employee", employee);
+
         return "hr/employee-profile";
     }
 
     @GetMapping("/employees/create")
     public String createEmployeeForm(Model model) {
+        model.addAttribute("title", "Добавить сотрудника");
+        model.addAttribute("icon", "bi-person-plus");
+
         List<Position> positions = positionService.getAllPositions();
         List<Department> departments = departmentService.getAllDepartments();
 
         model.addAttribute("positions", positions);
         model.addAttribute("departments", departments);
+
         return "hr/create-employee";
     }
 
@@ -142,10 +146,16 @@ public class HrController {
     }
 
     @GetMapping("/timesheets")
-    public String timesheetsPage(@RequestParam(defaultValue = "9") Integer month,
-                                 @RequestParam(defaultValue = "2025") Integer year,
+    public String timesheetsPage(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                 @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                  @RequestParam(required = false) Integer departmentId,
                                  Model model) {
+
+        model.addAttribute("title", "Табели учета рабочего времени");
+        model.addAttribute("icon", "bi-calendar-check");
+        model.addAttribute("month", month);
+        model.addAttribute("year", year);
+        model.addAttribute("departmentId", departmentId);
 
         List<Timesheet> timesheets = timesheetService.getTimesheetsByPeriod(month, year);
 
@@ -168,9 +178,6 @@ public class HrController {
         List<Department> departments = departmentService.getAllDepartments();
 
         model.addAttribute("timesheets", timesheets);
-        model.addAttribute("month", month);
-        model.addAttribute("year", year);
-        model.addAttribute("departmentId", departmentId);
         model.addAttribute("departments", departments);
         model.addAttribute("confirmedCount", confirmedCount);
         model.addAttribute("draftCount", draftCount);
@@ -180,19 +187,19 @@ public class HrController {
     }
 
     @GetMapping("/timesheets/create")
-    public String createTimesheetForm(@RequestParam(defaultValue = "9") Integer month,
-                                      @RequestParam(defaultValue = "2025") Integer year,
+    public String createTimesheetForm(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                      @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                       @RequestParam(required = false) Integer employeeId,
                                       Model model) {
+
+        model.addAttribute("title", "Создать табель");
+        model.addAttribute("icon", "bi-calendar-plus");
 
         List<Employee> activeEmployees = employeeService.getAllEmployees().stream()
                 .filter(e -> e.getTerminationDate() == null)
                 .collect(Collectors.toList());
 
-        List<MarkType> markTypes = markTypeService.getAllMarkTypes();
-
         model.addAttribute("employees", activeEmployees);
-        model.addAttribute("markTypes", markTypes);
         model.addAttribute("month", month);
         model.addAttribute("year", year);
         model.addAttribute("selectedEmployeeId", employeeId);
@@ -225,38 +232,15 @@ public class HrController {
 
     @GetMapping("/timesheets/{id}/edit")
     public String editTimesheetForm(@PathVariable Integer id, Model model) {
+        model.addAttribute("title", "Редактирование табеля");
+        model.addAttribute("icon", "bi-pencil");
+
         Timesheet timesheet = timesheetService.getTimesheetById(id)
                 .orElseThrow(() -> new RuntimeException("Табель не найден"));
 
-        List<TimesheetEntry> entries = timesheetService.getTimesheetEntries(timesheet);
-        List<MarkType> markTypes = markTypeService.getAllMarkTypes();
-
         model.addAttribute("timesheet", timesheet);
-        model.addAttribute("entries", entries);
-        model.addAttribute("markTypes", markTypes);
 
         return "hr/edit-timesheet";
-    }
-
-    @PostMapping("/timesheets/{id}/entries")
-    public String addTimesheetEntry(@PathVariable Integer id,
-                                    @RequestParam String date,
-                                    @RequestParam Integer markTypeId,
-                                    @RequestParam BigDecimal hours) {
-        try {
-            Timesheet timesheet = timesheetService.getTimesheetById(id)
-                    .orElseThrow(() -> new RuntimeException("Табель не найден"));
-
-            MarkType markType = markTypeService.getMarkTypeById(markTypeId)
-                    .orElseThrow(() -> new RuntimeException("Тип отметки не найден"));
-
-            timesheetService.addTimesheetEntry(timesheet, LocalDate.parse(date), markType, hours);
-
-            return "redirect:/hr/timesheets/" + id + "/edit?success=Запись добавлена";
-
-        } catch (Exception e) {
-            return "redirect:/hr/timesheets/" + id + "/edit?error=" + e.getMessage();
-        }
     }
 
     @PostMapping("/timesheets/{id}/confirm")
@@ -272,68 +256,5 @@ public class HrController {
         } catch (Exception e) {
             return "redirect:/hr/timesheets?error=" + e.getMessage();
         }
-    }
-
-    @PostMapping("/timesheets/{id}/delete")
-    public String deleteTimesheet(@PathVariable Integer id) {
-        try {
-            Timesheet timesheet = timesheetService.getTimesheetById(id)
-                    .orElseThrow(() -> new RuntimeException("Табель не найден"));
-
-            timesheetService.deleteTimesheetEntries(timesheet);
-            timesheetService.deleteTimesheet(id);
-
-            return "redirect:/hr/timesheets?success=Табель удален";
-
-        } catch (Exception e) {
-            return "redirect:/hr/timesheets?error=" + e.getMessage();
-        }
-    }
-
-    @GetMapping("/employees/{id}/timesheets")
-    public String employeeTimesheets(@PathVariable Integer id,
-                                     @RequestParam(defaultValue = "9") Integer month,
-                                     @RequestParam(defaultValue = "2025") Integer year,
-                                     Model model) {
-        Employee employee = employeeService.getEmployeeById(id)
-                .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
-
-        List<Timesheet> timesheets = timesheetService.getTimesheetsByEmployee(employee);
-
-        model.addAttribute("employee", employee);
-        model.addAttribute("timesheets", timesheets);
-        model.addAttribute("month", month);
-        model.addAttribute("year", year);
-
-        return "hr/employee-timesheets";
-    }
-
-    @GetMapping("/statistics")
-    public String statisticsPage(Model model) {
-        List<Employee> employees = employeeService.getAllEmployees();
-        List<Timesheet> timesheets = timesheetService.getAllTimesheets();
-
-        long totalEmployees = employees.size();
-        long activeEmployees = employees.stream()
-                .filter(e -> e.getTerminationDate() == null)
-                .count();
-
-        long totalTimesheets = timesheets.size();
-        long confirmedTimesheets = timesheets.stream()
-                .filter(t -> t.getStatus() == Timesheet.TimesheetStatus.CONFIRMED)
-                .count();
-
-        double avgHours = timesheets.stream()
-                .mapToDouble(t -> t.getTotalHours().doubleValue())
-                .average()
-                .orElse(0.0);
-
-        model.addAttribute("totalEmployees", totalEmployees);
-        model.addAttribute("activeEmployees", activeEmployees);
-        model.addAttribute("totalTimesheets", totalTimesheets);
-        model.addAttribute("confirmedTimesheets", confirmedTimesheets);
-        model.addAttribute("avgHours", String.format("%.1f", avgHours));
-
-        return "hr/statistics";
     }
 }

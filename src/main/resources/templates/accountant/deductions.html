@@ -2,15 +2,15 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Удержания - Бухгалтер - Расчёт и анализ заработной платы</title>
+    <title>Удержания - Бухгалтер</title>
 </head>
-<body th:replace="accountant/base :: html(
+<body th:replace="~{layout :: html(
     title='Управление удержаниями',
     icon='bi-calculator',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
-)">
+)}">
 
 <div id="actions">
     <div class="btn-group">
@@ -21,37 +21,31 @@
 </div>
 
 <div id="content">
-    <!-- Период и фильтры -->
     <div class="card mb-4">
-        <div class="card-body period-selector">
+        <div class="card-body">
             <form method="get" th:action="@{/accountant/deductions}" class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label for="month" class="form-label">Месяц</label>
                     <select class="form-select" id="month" name="month">
-                        <option value="1" th:selected="${month == 1}">Январь</option>
-                        <option value="2" th:selected="${month == 2}">Февраль</option>
-                        <option value="3" th:selected="${month == 3}">Март</option>
-                        <option value="4" th:selected="${month == 4}">Апрель</option>
-                        <option value="5" th:selected="${month == 5}">Май</option>
-                        <option value="6" th:selected="${month == 6}">Июнь</option>
-                        <option value="7" th:selected="${month == 7}">Июль</option>
-                        <option value="8" th:selected="${month == 8}">Август</option>
-                        <option value="9" th:selected="${month == 9}">Сентябрь</option>
-                        <option value="10" th:selected="${month == 10}">Октябрь</option>
-                        <option value="11" th:selected="${month == 11}">Ноябрь</option>
-                        <option value="12" th:selected="${month == 12}">Декабрь</option>
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${month == m}"
+                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label for="year" class="form-label">Год</label>
                     <select class="form-select" id="year" name="year">
-                        <option value="2024" th:selected="${year == 2024}">2024</option>
-                        <option value="2025" th:selected="${year == 2025}">2025</option>
-                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                        <option th:each="y : ${#numbers.sequence(2020, 2030)}"
+                                th:value="${y}"
+                                th:selected="${year == y}"
+                                th:text="${y}">
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label for="departmentId" class="form-label">Отдел (опционально)</label>
+                    <label for="departmentId" class="form-label">Отдел</label>
                     <select class="form-select" id="departmentId" name="departmentId">
                         <option value="">Все отделы</option>
                         <option th:each="dept : ${departments}"
@@ -62,7 +56,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-dark w-100">
                         <i class="bi bi-filter"></i> Применить
                     </button>
                 </div>
@@ -70,7 +64,6 @@
         </div>
     </div>
 
-    <!-- Статистика -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary">
@@ -86,7 +79,7 @@
                 <div class="card-body text-center">
                     <i class="bi bi-check-circle fs-1 mb-2"></i>
                     <h6 class="card-title">С налогами</h6>
-                    <h3 th:text="${employeesWithTaxes}">0</h3>
+                    <h3>0</h3>
                 </div>
             </div>
         </div>
@@ -95,7 +88,7 @@
                 <div class="card-body text-center">
                     <i class="bi bi-clock fs-1 mb-2"></i>
                     <h6 class="card-title">Ожидают</h6>
-                    <h3 th:text="${#lists.size(employees) - employeesWithTaxes}">0</h3>
+                    <h3 th:text="${#lists.size(employees)}">0</h3>
                 </div>
             </div>
         </div>
@@ -110,7 +103,6 @@
         </div>
     </div>
 
-    <!-- Таблица сотрудников -->
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">
@@ -128,7 +120,6 @@
                         <th>Отдел</th>
                         <th>Начисления</th>
                         <th>Статус налогов</th>
-                        <th>Удержания</th>
                         <th>Действия</th>
                     </tr>
                     </thead>
@@ -138,34 +129,14 @@
                         <td th:text="${employee.position.title}"></td>
                         <td th:text="${employee.department.name}"></td>
                         <td>
-                            <span th:if="${employeePayments.containsKey(employee.id)}">
-                                <span th:text="${employeeAccruals[employee.id]} + ' руб.'">0 руб.</span>
-                            </span>
-                            <span th:unless="${employeePayments.containsKey(employee.id)}" class="text-muted">—</span>
+                            <span class="text-muted">—</span>
                         </td>
                         <td>
-                            <span th:if="${employeeHasTax[employee.id]}"
-                                  class="badge bg-success">Рассчитан</span>
-                            <span th:unless="${employeeHasTax[employee.id]}"
-                                  class="badge bg-warning">Ожидает</span>
-                        </td>
-                        <td>
-                            <span th:if="${employeePayments.containsKey(employee.id)}">
-                                <span th:each="payment : ${employeePayments.get(employee.id)}">
-                                    <span th:if="${payment.paymentType.category == 'deduction'}"
-                                          class="badge bg-light text-dark me-1">
-                                        <span th:text="${payment.paymentType.name}"></span>:
-                                        <span th:text="${payment.amount.abs()} + ' руб.'"></span>
-                                    </span>
-                                </span>
-                            </span>
-                            <span th:unless="${employeePayments.containsKey(employee.id)}" class="text-muted">—</span>
+                            <span class="badge bg-warning">Ожидает</span>
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <!-- Расчет налога -->
                                 <form th:action="@{/accountant/deductions/tax}" method="post"
-                                      th:if="${employeePayments.containsKey(employee.id) and not employeeHasTax[employee.id]}"
                                       style="display: inline;">
                                     <input type="hidden" name="employeeId" th:value="${employee.id}">
                                     <input type="hidden" name="month" th:value="${month}">
@@ -176,40 +147,18 @@
                                     </button>
                                 </form>
 
-                                <!-- Добавление удержания -->
-                                <button th:if="${employeePayments.containsKey(employee.id)}"
-                                        class="btn btn-outline-danger btn-sm"
+                                <button class="btn btn-outline-danger btn-sm"
                                         data-bs-toggle="modal"
                                         data-bs-target="#deductionModal"
                                         th:attr="data-bs-employee-id=${employee.id},
                                                  data-bs-employee-name=${employee.fullName}">
                                     <i class="bi bi-dash-circle"></i>
                                 </button>
-
-                                <!-- Финальный расчет -->
-                                <form th:action="@{/accountant/calculations/final}" method="post"
-                                      th:if="${employeePayments.containsKey(employee.id)}"
-                                      style="display: inline;">
-                                    <input type="hidden" name="employeeId" th:value="${employee.id}">
-                                    <input type="hidden" name="month" th:value="${month}">
-                                    <input type="hidden" name="year" th:value="${year}">
-                                    <button type="submit" class="btn btn-outline-success btn-sm"
-                                            title="Завершить расчет">
-                                        <i class="bi bi-check-lg"></i>
-                                    </button>
-                                </form>
-
-                                <!-- Детальный просмотр -->
-                                <a th:href="@{/accountant/employee/{id}/deductions(id=${employee.id}, month=${month}, year=${year})}"
-                                   class="btn btn-outline-info btn-sm"
-                                   title="Детали удержаний">
-                                    <i class="bi bi-eye"></i>
-                                </a>
                             </div>
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(employees)}">
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="6" class="text-center text-muted py-4">
                             <i class="bi bi-people display-4"></i>
                             <p class="mt-2">Сотрудники не найдены</p>
                             <p class="small">Измените параметры фильтра или период</p>
@@ -222,7 +171,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для добавления удержания -->
 <div class="modal fade" id="deductionModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -230,7 +178,7 @@
                 <h5 class="modal-title">Добавить удержание</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="deductionForm" method="post" th:action="@{/accountant/deductions/custom}">
+            <form th:action="@{/accountant/deductions/custom}" method="post">
                 <input type="hidden" name="month" th:value="${month}">
                 <input type="hidden" name="year" th:value="${year}">
                 <input type="hidden" name="employeeId" id="deductionEmployeeId">
@@ -270,7 +218,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для расчета всех налогов -->
 <div class="modal fade" id="calculateAllTaxesModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -281,10 +228,6 @@
             <div class="modal-body">
                 <p>Вы уверены, что хотите рассчитать подоходный налог для
                     <strong th:text="${#lists.size(employees)}"></strong> сотрудников?</p>
-                <p class="text-muted small">
-                    Будет рассчитан НДФЛ 13% для всех сотрудников, у которых еще не рассчитан налог.
-                    Расчет производится на основе уже имеющихся начислений.
-                </p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -301,7 +244,6 @@
 
 <div id="scripts">
     <script>
-        // Обработка модального окна удержаний
         const deductionModal = document.getElementById('deductionModal');
         if (deductionModal) {
             deductionModal.addEventListener('show.bs.modal', function (event) {
@@ -313,17 +255,6 @@
                 document.getElementById('deductionEmployeeName').textContent = employeeName;
             });
         }
-
-        // Автоматическое закрытие алертов
-        document.addEventListener('DOMContentLoaded', function () {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
-            });
-        });
     </script>
 </div>
 </body>

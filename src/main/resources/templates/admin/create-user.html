@@ -6,26 +6,21 @@
 </head>
 <body th:replace="layout :: html(
     title='Создание пользователя',
+    icon='bi-person-plus',
+    actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
 )">
 
-<div id="content">
-    <!-- Хлебные крошки -->
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-                <a th:href="@{/admin/dashboard}">Администратор</a>
-            </li>
-            <li class="breadcrumb-item">
-                <a th:href="@{/admin/users}">Пользователи</a>
-            </li>
-            <li class="breadcrumb-item active">Создание пользователя</li>
-        </ol>
-    </nav>
+<div id="actions">
+    <a th:href="@{/admin/users}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
 
+<div id="content">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-lg-8">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -107,7 +102,7 @@
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a th:href="@{/admin/users}" class="btn btn-secondary me-md-2">
-                                <i class="bi bi-arrow-left"></i> Отмена
+                                <i class="bi bi-x-circle"></i> Отмена
                             </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check-lg"></i> Создать пользователя
@@ -123,13 +118,15 @@
 <div id="scripts">
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Валидация формы
             const form = document.querySelector('form');
+            const passwordInput = document.getElementById('password');
+
             form.addEventListener('submit', function (e) {
-                const password = document.getElementById('password').value;
+                const password = passwordInput.value;
                 if (password.length < 6) {
                     e.preventDefault();
                     alert('Пароль должен содержать минимум 6 символов');
+                    passwordInput.focus();
                     return false;
                 }
             });

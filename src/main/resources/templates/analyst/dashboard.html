@@ -2,9 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Аналитическая панель - Аналитик - Аналитика заработной платы</title>
+    <title>Аналитическая панель - Аналитик</title>
 </head>
-<body th:replace="~{analyst/base :: html(
+<body th:replace="~{layout :: html(
     title='Аналитическая панель',
     icon='bi-speedometer2',
     actions=~{:: #actions},
@@ -25,21 +25,21 @@
 </div>
 
 <div id="content">
-    <!-- Заголовок с общей статистикой -->
-    <div class="analytics-header mb-4">
-        <div class="row">
-            <div class="col-md-8">
-                <h1 class="display-6">Аналитическая панель</h1>
-                <p class="lead mb-0">Комплексный анализ заработных плат и финансовых показателей</p>
-            </div>
-            <div class="col-md-4 text-end">
-                <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
-                <p class="mb-0">Период анализа</p>
+    <div class="card bg-dark text-white mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <h1 class="display-6"><i class="bi bi-bar-chart"></i> Аналитическая панель</h1>
+                    <p class="lead mb-0">Комплексный анализ заработных плат и финансовых показателей</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
+                    <p class="mb-0">Период анализа</p>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Ключевые метрики -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card stat-card text-white bg-primary">
@@ -100,7 +100,6 @@
     </div>
 
     <div class="row">
-        <!-- График сравнения отделов -->
         <div class="col-lg-8 mb-4">
             <div class="card">
                 <div class="card-header">
@@ -116,7 +115,6 @@
             </div>
         </div>
 
-        <!-- Топ сотрудников -->
         <div class="col-lg-4 mb-4">
             <div class="card">
                 <div class="card-header">
@@ -126,7 +124,7 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
-                        <div th:each="emp, iter : ${topEmployees}"
+                        <div th:each="emp : ${topEmployees.topEmployees}"
                              class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
                                 <strong th:text="${emp.name}"></strong>
@@ -137,7 +135,7 @@
                                 ₽<span th:text="${#numbers.formatDecimal(emp.salary, 1, 2)}"></span>
                             </span>
                         </div>
-                        <div th:if="${#lists.isEmpty(topEmployees)}" class="list-group-item text-center text-muted">
+                        <div th:if="${#lists.isEmpty(topEmployees.topEmployees)}" class="list-group-item text-center text-muted">
                             <i class="bi bi-info-circle"></i> Нет данных за выбранный период
                         </div>
                     </div>
@@ -146,7 +144,6 @@
         </div>
     </div>
 
-    <!-- Быстрый доступ к отчетам -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -158,7 +155,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-2 text-center mb-3">
-                            <a th:href="@{/templates/analyst/department-comparison.html(month=${month}, year=${year})}"
+                            <a th:href="@{/analyst/department-comparison(month=${month}, year=${year})}"
                                class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
                                 <i class="bi bi-bar-chart fs-1 mb-2"></i>
                                 <span>Сравнение</span>
@@ -200,18 +197,13 @@
 </div>
 
 <div id="scripts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script th:inline="javascript">
-        /*<![CDATA[*/
-
-        // Инициализация графика сравнения отделов
         function initDepartmentComparisonChart() {
             const ctx = document.getElementById('departmentComparisonChart').getContext('2d');
-
-            // Правильное получение данных из Thymeleaf
             const departments = /*[[${departmentComparison.departments}]]*/ [];
             const averageSalaries = /*[[${departmentComparison.averageSalaries}]]*/ [];
 
-            // Проверяем, есть ли данные
             if (!departments || departments.length === 0) {
                 ctx.font = '16px Arial';
                 ctx.fillStyle = '#6c757d';
@@ -227,22 +219,8 @@
                     datasets: [{
                         label: 'Средняя зарплата (руб.)',
                         data: averageSalaries,
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(255, 205, 86, 0.8)',
-                            'rgba(75, 192, 192, 0.8)',
-                            'rgba(153, 102, 255, 0.8)',
-                            'rgba(255, 159, 64, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(255, 205, 86, 1)',
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(153, 102, 255, 1)',
-                            'rgba(255, 159, 64, 1)'
-                        ],
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
                         borderWidth: 1
                     }]
                 },
@@ -275,27 +253,15 @@
             });
         }
 
-        // Смена периода
         function changePeriod() {
             const select = document.getElementById('periodSelect');
             const [month, year] = select.value.split(',');
             window.location.href = '/analyst/dashboard?month=' + month + '&year=' + year;
         }
 
-        // Автоматическое закрытие алертов
         document.addEventListener('DOMContentLoaded', function() {
             initDepartmentComparisonChart();
-
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
-            });
         });
-
-        /*]]>*/
     </script>
 </div>
 </body>

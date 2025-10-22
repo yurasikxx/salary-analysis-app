@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -27,11 +28,9 @@ public class AnalystController {
         this.employeeService = employeeService;
     }
 
-    // === ВЕБ-СТРАНИЦЫ ===
-
     @GetMapping("/dashboard")
-    public String dashboard(@RequestParam(defaultValue = "9") Integer month,
-                            @RequestParam(defaultValue = "2025") Integer year,
+    public String dashboard(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                             Model model) {
 
         model.addAttribute("title", "Аналитическая панель");
@@ -40,21 +39,20 @@ public class AnalystController {
         model.addAttribute("year", year);
         model.addAttribute("departments", departmentService.getAllDepartments());
 
-        var companyStats = analyticsService.getCompanyStatistics(month, year);
+        Map<String, Object> companyStats = analyticsService.getCompanyStatistics(month, year);
+        Map<String, Object> departmentComparison = analyticsService.getDepartmentSalaryComparison(month, year);
+        List<Map<String, Object>> topEmployees = analyticsService.getTopEmployeesBySalary(month, year, 5);
+
         model.addAttribute("companyStats", companyStats);
-
-        var topEmployees = analyticsService.getTopEmployeesBySalary(month, year, 5);
-        model.addAttribute("topEmployees", topEmployees);
-
-        var departmentComparison = analyticsService.getDepartmentSalaryComparison(month, year);
         model.addAttribute("departmentComparison", departmentComparison);
+        model.addAttribute("topEmployees", topEmployees);
 
         return "analyst/dashboard";
     }
 
     @GetMapping("/department-comparison")
-    public String departmentComparison(@RequestParam(defaultValue = "9") Integer month,
-                                       @RequestParam(defaultValue = "2025") Integer year,
+    public String departmentComparison(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                       @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                        Model model) {
 
         model.addAttribute("title", "Сравнение отделов");
@@ -62,18 +60,18 @@ public class AnalystController {
         model.addAttribute("month", month);
         model.addAttribute("year", year);
 
-        var comparisonData = analyticsService.getDepartmentSalaryComparison(month, year);
+        Map<String, Object> comparisonData = analyticsService.getDepartmentSalaryComparison(month, year);
         model.addAttribute("comparisonData", comparisonData);
 
-        return "analyst/department-comparison.html";
+        return "analyst/department-comparison";
     }
 
     @GetMapping("/salary-dynamics")
     public String salaryDynamics(@RequestParam(required = false) Integer departmentId,
                                  @RequestParam(defaultValue = "1") Integer startMonth,
-                                 @RequestParam(defaultValue = "2025") Integer startYear,
-                                 @RequestParam(defaultValue = "9") Integer endMonth,
-                                 @RequestParam(defaultValue = "2025") Integer endYear,
+                                 @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer startYear,
+                                 @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer endMonth,
+                                 @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer endYear,
                                  Model model) {
 
         model.addAttribute("title", "Динамика заработных плат");
@@ -86,7 +84,7 @@ public class AnalystController {
         model.addAttribute("departments", departmentService.getAllDepartments());
 
         if (departmentId != null) {
-            var dynamicsData = analyticsService.getSalaryDynamicsByDepartment(
+            Map<String, Object> dynamicsData = analyticsService.getSalaryDynamicsByDepartment(
                     departmentId, startMonth, startYear, endMonth, endYear);
             model.addAttribute("dynamicsData", dynamicsData);
         }
@@ -96,8 +94,8 @@ public class AnalystController {
 
     @GetMapping("/payment-structure")
     public String paymentStructure(@RequestParam(required = false) Integer employeeId,
-                                   @RequestParam(defaultValue = "9") Integer month,
-                                   @RequestParam(defaultValue = "2025") Integer year,
+                                   @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                   @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                    Model model) {
 
         model.addAttribute("title", "Структура выплат");
@@ -108,7 +106,7 @@ public class AnalystController {
         model.addAttribute("employees", employeeService.getActiveEmployees());
 
         if (employeeId != null) {
-            var structureData = analyticsService.getPaymentStructureAnalysis(employeeId, month, year);
+            Map<String, Object> structureData = analyticsService.getPaymentStructureAnalysis(employeeId, month, year);
             model.addAttribute("structureData", structureData);
         }
 
@@ -116,8 +114,8 @@ public class AnalystController {
     }
 
     @GetMapping("/top-employees")
-    public String topEmployees(@RequestParam(defaultValue = "9") Integer month,
-                               @RequestParam(defaultValue = "2025") Integer year,
+    public String topEmployees(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                               @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                @RequestParam(defaultValue = "10") Integer limit,
                                Model model) {
 
@@ -127,7 +125,7 @@ public class AnalystController {
         model.addAttribute("year", year);
         model.addAttribute("limit", limit);
 
-        var topEmployees = analyticsService.getTopEmployeesBySalary(month, year, limit);
+        List<Map<String, Object>> topEmployees = analyticsService.getTopEmployeesBySalary(month, year, limit);
         model.addAttribute("topEmployees", topEmployees);
 
         return "analyst/top-employees";
@@ -135,8 +133,8 @@ public class AnalystController {
 
     @GetMapping("/trend-analysis")
     public String trendAnalysis(@RequestParam(required = false) Integer departmentId,
-                                @RequestParam(defaultValue = "9") Integer month,
-                                @RequestParam(defaultValue = "2025") Integer year,
+                                @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
                                 Model model) {
 
         model.addAttribute("title", "Анализ трендов");
@@ -147,63 +145,13 @@ public class AnalystController {
         model.addAttribute("departments", departmentService.getAllDepartments());
 
         if (departmentId != null) {
-            var trendData = analyticsService.getSalaryTrendAnalysis(departmentId, month, year);
+            Map<String, Object> trendData = analyticsService.getSalaryTrendAnalysis(departmentId, month, year);
             model.addAttribute("trendData", trendData);
         }
 
-        var companyStats = analyticsService.getCompanyStatistics(month, year);
+        Map<String, Object> companyStats = analyticsService.getCompanyStatistics(month, year);
         model.addAttribute("companyStats", companyStats);
 
         return "analyst/trend-analysis";
-    }
-
-    // === API ENDPOINTS (для AJAX запросов) ===
-
-    @GetMapping("/api/department-comparison")
-    @ResponseBody
-    public Map<String, Object> getDepartmentComparisonApi(@RequestParam Integer month,
-                                                          @RequestParam Integer year) {
-        return analyticsService.getDepartmentSalaryComparison(month, year);
-    }
-
-    @GetMapping("/api/salary-dynamics")
-    @ResponseBody
-    public Map<String, Object> getSalaryDynamicsApi(@RequestParam Integer departmentId,
-                                                    @RequestParam Integer startMonth,
-                                                    @RequestParam Integer startYear,
-                                                    @RequestParam Integer endMonth,
-                                                    @RequestParam Integer endYear) {
-        return analyticsService.getSalaryDynamicsByDepartment(departmentId, startMonth, startYear, endMonth, endYear);
-    }
-
-    @GetMapping("/api/payment-structure")
-    @ResponseBody
-    public Map<String, Object> getPaymentStructureApi(@RequestParam Integer employeeId,
-                                                      @RequestParam Integer month,
-                                                      @RequestParam Integer year) {
-        return analyticsService.getPaymentStructureAnalysis(employeeId, month, year);
-    }
-
-    @GetMapping("/api/top-employees")
-    @ResponseBody
-    public Object getTopEmployeesApi(@RequestParam Integer month,
-                                     @RequestParam Integer year,
-                                     @RequestParam(defaultValue = "5") Integer limit) {
-        return analyticsService.getTopEmployeesBySalary(month, year, limit);
-    }
-
-    @GetMapping("/api/trend")
-    @ResponseBody
-    public Map<String, Object> getSalaryTrendApi(@RequestParam Integer departmentId,
-                                                 @RequestParam Integer month,
-                                                 @RequestParam Integer year) {
-        return analyticsService.getSalaryTrendAnalysis(departmentId, month, year);
-    }
-
-    @GetMapping("/api/company-stats")
-    @ResponseBody
-    public Map<String, Object> getCompanyStatisticsApi(@RequestParam Integer month,
-                                                       @RequestParam Integer year) {
-        return analyticsService.getCompanyStatistics(month, year);
     }
 }

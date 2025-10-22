@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Расчет заработной платы - Расчёт и анализ заработной платы</title>
+    <title>Расчет заработной платы - Нормировщик</title>
 </head>
 <body th:replace="ratesetter/base :: html(
     title='Расчет заработной платы',
@@ -22,36 +22,31 @@
 
 <div id="content">
     <div class="card mb-4">
-        <div class="card-body period-selector">
+        <div class="card-body">
             <form method="get" th:action="@{/ratesetter/calculations}" class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label for="month" class="form-label">Месяц</label>
-                    <select class="form-select" id="month" name="month">
-                        <option value="1" th:selected="${month == 1}">Январь</option>
-                        <option value="2" th:selected="${month == 2}">Февраль</option>
-                        <option value="3" th:selected="${month == 3}">Март</option>
-                        <option value="4" th:selected="${month == 4}">Апрель</option>
-                        <option value="5" th:selected="${month == 5}">Май</option>
-                        <option value="6" th:selected="${month == 6}">Июнь</option>
-                        <option value="7" th:selected="${month == 7}">Июль</option>
-                        <option value="8" th:selected="${month == 8}">Август</option>
-                        <option value="9" th:selected="${month == 9}">Сентябрь</option>
-                        <option value="10" th:selected="${month == 10}">Октябрь</option>
-                        <option value="11" th:selected="${month == 11}">Ноябрь</option>
-                        <option value="12" th:selected="${month == 12}">Декабрь</option>
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                th:value="${m}"
+                                th:selected="${month == m}"
+                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="year" class="form-label">Год</label>
-                    <select class="form-select" id="year" name="year">
-                        <option value="2024" th:selected="${year == 2024}">2024</option>
-                        <option value="2025" th:selected="${year == 2025}">2025</option>
-                        <option value="2026" th:selected="${year == 2026}">2026</option>
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option th:each="y : ${#numbers.sequence(2023, 2026)}"
+                                th:value="${y}"
+                                th:selected="${year == y}"
+                                th:text="${y}">
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label for="departmentId" class="form-label">Отдел (опционально)</label>
-                    <select class="form-select" id="departmentId" name="departmentId">
+                    <label class="form-label">Отдел</label>
+                    <select class="form-select" name="departmentId">
                         <option value="">Все отделы</option>
                         <option th:each="dept : ${departments}"
                                 th:value="${dept.id}"
@@ -61,7 +56,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-dark w-100">
                         <i class="bi bi-filter"></i> Применить
                     </button>
                 </div>
@@ -131,10 +126,12 @@
                     </thead>
                     <tbody>
                     <tr th:each="employee : ${employees}">
-                        <td th:text="${employee.fullName}"></td>
+                        <td>
+                            <strong th:text="${employee.fullName}"></strong>
+                        </td>
                         <td th:text="${employee.position.title}"></td>
                         <td th:text="${employee.department.name}"></td>
-                        <td th:text="${employee.position.baseSalary} + ' руб.'"></td>
+                        <td th:text="${employee.position.baseSalary + ' руб.'}"></td>
                         <td>
                             <span th:if="${employeePayments.containsKey(employee.id)}"
                                   class="badge bg-success">Рассчитано</span>
@@ -148,7 +145,7 @@
                                       th:if="${payment.paymentType.category == 'accrual'}"
                                       class="badge bg-light text-dark me-1">
                                     <span th:text="${payment.paymentType.name}"></span>:
-                                    <span th:text="${payment.amount} + ' руб.'"></span>
+                                    <span th:text="${payment.amount + ' руб.'}"></span>
                                 </span>
                             </span>
                             <span th:unless="${employeePayments.containsKey(employee.id)}"
@@ -159,6 +156,7 @@
                                 <form th:action="@{/ratesetter/calculations/basic}" method="post"
                                       th:if="${!employeePayments.containsKey(employee.id)}"
                                       style="display: inline;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                     <input type="hidden" name="employeeId" th:value="${employee.id}">
                                     <input type="hidden" name="month" th:value="${month}">
                                     <input type="hidden" name="year" th:value="${year}">
@@ -207,6 +205,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="bonusForm" method="post" th:action="@{/ratesetter/calculations/bonus}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <input type="hidden" name="month" th:value="${month}">
                 <input type="hidden" name="year" th:value="${year}">
                 <input type="hidden" name="employeeId" id="bonusEmployeeId">
@@ -264,6 +263,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form th:action="@{/ratesetter/calculations/recalculate-all}" method="post" style="display: inline;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <input type="hidden" name="month" th:value="${month}">
                     <input type="hidden" name="year" th:value="${year}">
                     <input type="hidden" name="departmentId" th:value="${departmentId}">
@@ -276,19 +276,19 @@
 
 <div id="scripts">
     <script>
-        const bonusModal = document.getElementById('bonusModal');
-        if (bonusModal) {
-            bonusModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const employeeId = button.getAttribute('data-bs-employee-id');
-                const employeeName = button.getAttribute('data-bs-employee-name');
-
-                document.getElementById('bonusEmployeeId').value = employeeId;
-                document.getElementById('bonusEmployeeName').textContent = employeeName;
-            });
-        }
-
         document.addEventListener('DOMContentLoaded', function () {
+            const bonusModal = document.getElementById('bonusModal');
+            if (bonusModal) {
+                bonusModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const employeeId = button.getAttribute('data-bs-employee-id');
+                    const employeeName = button.getAttribute('data-bs-employee-name');
+
+                    document.getElementById('bonusEmployeeId').value = employeeId;
+                    document.getElementById('bonusEmployeeName').textContent = employeeName;
+                });
+            }
+
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {

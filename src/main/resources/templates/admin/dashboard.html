@@ -2,36 +2,40 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Дашборд администратора - Система управления</title>
+    <title>Дашборд администратора</title>
 </head>
 <body th:replace="layout :: html(
-    title='Дашборд администратора',
+    title='Панель администратора',
+    icon='bi-shield-check',
+    actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
 )">
 
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-outline-success" onclick="refreshStats()">
+            <i class="bi bi-arrow-clockwise"></i> Обновить
+        </button>
+    </div>
+</div>
+
 <div id="content">
-    <!-- Заголовок -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-dark text-white">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h1 class="display-6"><i class="bi bi-shield-check"></i> Панель администратора</h1>
-                            <p class="lead mb-0">Управление пользователями, настройки системы и мониторинг</p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <h3>Система</h3>
-                            <p class="mb-0">Администрирование</p>
-                        </div>
-                    </div>
+    <div class="card bg-dark text-white mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <h1 class="display-6"><i class="bi bi-shield-check"></i> Панель администратора</h1>
+                    <p class="lead mb-0">Управление пользователями, настройки системы и мониторинг</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <h3>Система</h3>
+                    <p class="mb-0">Администрирование</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Ключевые метрики -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary">
@@ -71,47 +75,8 @@
         </div>
     </div>
 
-    <!-- Быстрый доступ -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightning"></i> Быстрый доступ
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/admin/users}"
-                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-people fs-1 mb-2"></i>
-                                <span>Управление пользователями</span>
-                            </a>
-                        </div>
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/admin/system}"
-                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-gear fs-1 mb-2"></i>
-                                <span>Настройки системы</span>
-                            </a>
-                        </div>
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/admin/audit}"
-                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-clock-history fs-1 mb-2"></i>
-                                <span>Журнал событий</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Статистика по ролям -->
-    <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -125,7 +90,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -167,20 +132,57 @@
             </div>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Быстрый доступ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/admin/users}"
+                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-people fs-1 mb-2"></i>
+                                <span>Управление пользователями</span>
+                            </a>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/admin/system}"
+                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-gear fs-1 mb-2"></i>
+                                <span>Настройки системы</span>
+                            </a>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <a th:href="@{/admin/audit}"
+                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="bi bi-clock-history fs-1 mb-2"></i>
+                                <span>Журнал событий</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div id="scripts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script th:inline="javascript">
-        /*<![CDATA[*/
-
         function initRolesChart() {
             const ctx = document.getElementById('rolesChart').getContext('2d');
 
-            // Демо-данные для графика (в реальном приложении нужно получать с сервера)
+            // В реальном приложении нужно получать данные с сервера
+            // fetch('/admin/api/users/stats').then(...)
             const data = {
                 labels: ['Администраторы', 'Кадры', 'Нормировщики', 'Бухгалтеры', 'Аналитики'],
                 datasets: [{
-                    data: [2, 3, 2, 2, 1],
+                    data: [1, 3, 2, 2, 1],
                     backgroundColor: [
                         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
                     ]
@@ -202,11 +204,13 @@
             });
         }
 
+        function refreshStats() {
+            location.reload();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             initRolesChart();
         });
-
-        /*]]>*/
     </script>
 </div>
 </body>

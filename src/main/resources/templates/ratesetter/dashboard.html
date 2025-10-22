@@ -2,36 +2,44 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Дашборд нормировщика - Расчёт и анализ заработной платы</title>
+    <title>Дашборд нормировщика</title>
 </head>
-<body th:replace="layout :: html(
+<body th:replace="ratesetter/base :: html(
     title='Дашборд нормировщика',
+    icon='bi-speedometer2',
+    actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
 )">
 
+<div id="actions">
+    <div class="btn-group">
+        <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
+            <option th:each="m : ${#numbers.sequence(1,12)}"
+                    th:value="${m + ',' + year}"
+                    th:selected="${month == m}"
+                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM yyyy')}">
+            </option>
+        </select>
+    </div>
+</div>
+
 <div id="content">
-    <!-- Заголовок -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h1 class="display-6"><i class="bi bi-calculator"></i> Дашборд нормировщика</h1>
-                            <p class="lead mb-0">Управление расчетами основной заработной платы, премий и надбавок</p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
-                            <p class="mb-0">Расчетный период</p>
-                        </div>
-                    </div>
+    <div class="card bg-primary text-white mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <h1 class="display-6"><i class="bi bi-calculator"></i> Дашборд нормировщика</h1>
+                    <p class="lead mb-0">Управление расчетами основной заработной платы, премий и надбавок</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
+                    <p class="mb-0">Расчетный период</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Ключевые метрики -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-success">
@@ -71,7 +79,6 @@
         </div>
     </div>
 
-    <!-- Финансовые показатели -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
@@ -124,7 +131,6 @@
         </div>
     </div>
 
-    <!-- Быстрый доступ -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -162,7 +168,6 @@
         </div>
     </div>
 
-    <!-- Последние действия -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card">
@@ -200,8 +205,13 @@
 
 <div id="scripts">
     <script>
+        function changePeriod() {
+            const select = document.getElementById('periodSelect');
+            const [month, year] = select.value.split(',');
+            window.location.href = '/ratesetter/dashboard?month=' + month + '&year=' + year;
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
-            // Автоматическое закрытие алертов
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => {
                 setTimeout(() => {
