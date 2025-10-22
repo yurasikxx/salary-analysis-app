@@ -45,4 +45,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
     @Query("SELECT COUNT(e) FROM Employee e WHERE e.terminationDate IS NULL")
     Long countActiveEmployees();
 
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.position LEFT JOIN FETCH e.department WHERE e.terminationDate IS NULL")
+    List<Employee> findActiveEmployeesWithDetails();
+
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.position LEFT JOIN FETCH e.department")
+    List<Employee> findAllWithDetails();
 }

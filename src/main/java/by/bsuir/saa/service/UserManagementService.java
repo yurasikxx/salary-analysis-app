@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -101,5 +103,23 @@ public class UserManagementService {
 
     public Optional<User> findUserByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    public Map<String, Long> getUserStatisticsByRole() {
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .collect(Collectors.groupingBy(
+                        user -> user.getRole().getName(),
+                        Collectors.counting()
+                ));
+    }
+
+    public Map<String, Long> getActiveUserStatisticsByRole() {
+        List<User> users = userRepository.findByIsActiveTrue();
+        return users.stream()
+                .collect(Collectors.groupingBy(
+                        user -> user.getRole().getName(),
+                        Collectors.counting()
+                ));
     }
 }

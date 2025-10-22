@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Дашборд администратора</title>
+    <title>Панель администратора</title>
 </head>
 <body th:replace="layout :: html(
     title='Панель администратора',
@@ -21,19 +21,13 @@
 </div>
 
 <div id="content">
-    <div class="card bg-dark text-white mb-4">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-8">
-                    <h1 class="display-6"><i class="bi bi-shield-check"></i> Панель администратора</h1>
-                    <p class="lead mb-0">Управление пользователями, настройки системы и мониторинг</p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <h3>Система</h3>
-                    <p class="mb-0">Администрирование</p>
-                </div>
-            </div>
-        </div>
+    <div id="chartData"
+         th:data-admin="${userStatsByRole.get('ADMIN')}"
+         th:data-hr="${userStatsByRole.get('HR')}"
+         th:data-ratesetter="${userStatsByRole.get('RATESETTER')}"
+         th:data-accountant="${userStatsByRole.get('ACCOUNTANT')}"
+         th:data-analyst="${userStatsByRole.get('ANALYST')}"
+         style="display: none;">
     </div>
 
     <div class="row mb-4">
@@ -76,7 +70,7 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col-md-7">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -84,85 +78,41 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="chart-container">
+                    <div class="chart-container" style="height: 300px;">
                         <canvas id="rolesChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-5">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-graph-up"></i> Активность системы
+                        <i class="bi bi-graph-up"></i> Количество пользователей по ролям
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div th:each="entry : ${userStatsByRole}"
+                             class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <i class="bi bi-check-circle text-success"></i>
-                                <span class="ms-2">Система работает нормально</span>
+                                <i th:class="${'bi ' + (roleIcons.containsKey(entry.key) ? roleIcons.get(entry.key) : 'bi-person')}"></i>
+                                <span class="ms-2">
+                                    <span th:switch="${entry.key}">
+                                        <span th:case="'ADMIN'">Администраторы</span>
+                                        <span th:case="'HR'">Кадры</span>
+                                        <span th:case="'RATESETTER'">Нормировщики</span>
+                                        <span th:case="'ACCOUNTANT'">Бухгалтеры</span>
+                                        <span th:case="'ANALYST'">Аналитики</span>
+                                        <span th:case="*" th:text="${entry.key}">Другая роль</span>
+                                    </span>
+                                </span>
                             </div>
-                            <span class="badge bg-success">OK</span>
+                            <span class="badge bg-primary rounded-pill" th:text="${entry.value}">0</span>
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-database"></i>
-                                <span class="ms-2">База данных</span>
-                            </div>
-                            <span class="badge bg-success">Online</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-shield-check"></i>
-                                <span class="ms-2">Безопасность</span>
-                            </div>
-                            <span class="badge bg-success">Active</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-clock"></i>
-                                <span class="ms-2">Время работы</span>
-                            </div>
-                            <span class="badge bg-info">24/7</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightning"></i> Быстрый доступ
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/admin/users}"
-                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-people fs-1 mb-2"></i>
-                                <span>Управление пользователями</span>
-                            </a>
-                        </div>
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/admin/system}"
-                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-gear fs-1 mb-2"></i>
-                                <span>Настройки системы</span>
-                            </a>
-                        </div>
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/admin/audit}"
-                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-clock-history fs-1 mb-2"></i>
-                                <span>Журнал событий</span>
-                            </a>
+                        <div th:if="${userStatsByRole.isEmpty()}" class="list-group-item text-center text-muted">
+                            <i class="bi bi-pie-chart"></i>
+                            <p class="mb-0 mt-2">Нет данных для отображения</p>
                         </div>
                     </div>
                 </div>
@@ -173,33 +123,99 @@
 
 <div id="scripts">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script th:inline="javascript">
+    <script>
         function initRolesChart() {
             const ctx = document.getElementById('rolesChart').getContext('2d');
+            const dataElement = document.getElementById('chartData');
 
-            // В реальном приложении нужно получать данные с сервера
-            // fetch('/admin/api/users/stats').then(...)
-            const data = {
-                labels: ['Администраторы', 'Кадры', 'Нормировщики', 'Бухгалтеры', 'Аналитики'],
+            const roleStats = {
+                'ADMIN': parseInt(dataElement.dataset.admin) || 0,
+                'HR': parseInt(dataElement.dataset.hr) || 0,
+                'RATESETTER': parseInt(dataElement.dataset.ratesetter) || 0,
+                'ACCOUNTANT': parseInt(dataElement.dataset.accountant) || 0,
+                'ANALYST': parseInt(dataElement.dataset.analyst) || 0
+            };
+
+            Object.keys(roleStats).forEach(key => {
+                if (roleStats[key] === null) {
+                    roleStats[key] = 0;
+                }
+            });
+
+            const labels = [];
+            const data = [];
+            const backgroundColors = [];
+            const borderColors = [];
+
+            const colorMap = {
+                'ADMIN': '#dc3545',
+                'HR': '#ffc107',
+                'RATESETTER': '#0d6efd',
+                'ACCOUNTANT': '#198754',
+                'ANALYST': '#0dcaf0'
+            };
+
+            const labelMap = {
+                'ADMIN': 'Администраторы',
+                'HR': 'Кадры',
+                'RATESETTER': 'Нормировщики',
+                'ACCOUNTANT': 'Бухгалтеры',
+                'ANALYST': 'Аналитики'
+            };
+
+            for (const role in roleStats) {
+                if (roleStats[role] > 0) {
+                    labels.push(labelMap[role]);
+                    data.push(roleStats[role]);
+                    backgroundColors.push(colorMap[role]);
+                    borderColors.push('#ffffff');
+                }
+            }
+
+            if (data.length === 0) {
+                labels.push('Нет данных');
+                data.push(1);
+                backgroundColors.push('#e9ecef');
+                borderColors.push('#dee2e6');
+            }
+
+            const chartData = {
+                labels: labels,
                 datasets: [{
-                    data: [1, 3, 2, 2, 1],
-                    backgroundColor: [
-                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
-                    ]
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 2
                 }]
             };
 
             new Chart(ctx, {
                 type: 'doughnut',
-                data: data,
+                data: chartData,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'bottom'
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
                         }
-                    }
+                    },
+                    cutout: '50%'
                 }
             });
         }
@@ -208,7 +224,7 @@
             location.reload();
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             initRolesChart();
         });
     </script>

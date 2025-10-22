@@ -91,4 +91,12 @@ public class EmployeeService {
     public Long getNewEmployeesCount(LocalDate sinceDate) {
         return employeeRepository.countByHireDateAfter(sinceDate);
     }
+
+    public List<Employee> getAllEmployeesWithDetails() {
+        return employeeRepository.findAllWithDetails();
+    }
+
+    public List<Employee> getActiveEmployeesWithDetails() {
+        return employeeRepository.findActiveEmployeesWithDetails();
+    }
 }

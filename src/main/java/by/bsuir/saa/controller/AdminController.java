@@ -1,5 +1,6 @@
 package by.bsuir.saa.controller;
 
+import by.bsuir.saa.entity.Employee;
 import by.bsuir.saa.entity.User;
 import by.bsuir.saa.service.EmployeeService;
 import by.bsuir.saa.service.UserManagementService;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +33,15 @@ public class AdminController {
         long totalEmployees = employeeService.getAllEmployees().size();
         long activeEmployees = employeeService.getActiveEmployees().size();
 
+        Map<String, Long> userStatsByRole = userManagementService.getUserStatisticsByRole();
+
+        Map<String, String> roleIcons = new HashMap<>();
+        roleIcons.put("ADMIN", "bi-shield-check");
+        roleIcons.put("HR", "bi-people");
+        roleIcons.put("RATESETTER", "bi-gear");
+        roleIcons.put("ACCOUNTANT", "bi-calculator");
+        roleIcons.put("ANALYST", "bi-graph-up");
+
         model.addAttribute("title", "Панель администратора");
         model.addAttribute("icon", "bi-shield-check");
         model.addAttribute("totalUsers", totalUsers);
@@ -39,24 +50,35 @@ public class AdminController {
         model.addAttribute("totalEmployees", totalEmployees);
         model.addAttribute("activeEmployees", activeEmployees);
 
+        model.addAttribute("userStatsByRole", userStatsByRole);
+        model.addAttribute("roleIcons", roleIcons);
+
         return "admin/dashboard";
     }
 
     @GetMapping("/users")
     public String usersPage(Model model) {
-        List<User> users = userManagementService.getActiveUsers();
+        List<User> users = userManagementService.getAllUsers();
+
+        long activeCount = users.stream().filter(User::getIsActive).count();
+        long inactiveCount = users.size() - activeCount;
+
         model.addAttribute("title", "Управление пользователями");
         model.addAttribute("icon", "bi-people");
         model.addAttribute("users", users);
+        model.addAttribute("activeUsersCount", activeCount);
+        model.addAttribute("inactiveUsersCount", inactiveCount);
         return "admin/users";
     }
 
     @GetMapping("/users/create")
     public String createUserForm(Model model) {
+        List<Employee> employees = employeeService.getAllEmployeesWithDetails();
+
         model.addAttribute("title", "Создание пользователя");
         model.addAttribute("icon", "bi-person-plus");
         model.addAttribute("roles", List.of("ADMIN", "HR", "RATESETTER", "ACCOUNTANT", "ANALYST"));
-        model.addAttribute("employees", employeeService.getAllEmployees());
+        model.addAttribute("employees", employees);
         return "admin/create-user";
     }
 
@@ -67,7 +89,7 @@ public class AdminController {
                              @RequestParam String role) {
         try {
             userManagementService.createUser(username, password, employeeId, role);
-            return "redirect:/admin/users?success=Пользователь успешно создан";
+            return "redirect:/admin/users?success=User+created+successfully";
         } catch (Exception e) {
             return "redirect:/admin/users/create?error=" + e.getMessage();
         }
@@ -94,9 +116,9 @@ public class AdminController {
                              @RequestParam Boolean isActive) {
         try {
             userManagementService.updateUser(id, username, role, isActive);
-            return "redirect:/admin/users?success=Пользователь успешно обновлен";
+            return "redirect:/admin/users?success=User+updated+successfully";
         } catch (Exception e) {
-            return "redirect:/admin/users/" + id + "/edit?error=" + e.getMessage();
+            return String.format("redirect:/admin/users/%d/edit?error=%s", id, e.getMessage());
         }
     }
 
@@ -104,7 +126,7 @@ public class AdminController {
     public String deactivateUser(@PathVariable Integer id) {
         try {
             userManagementService.deactivateUser(id);
-            return "redirect:/admin/users?success=Пользователь деактивирован";
+            return "redirect:/admin/users?success=User+deactivated";
         } catch (Exception e) {
             return "redirect:/admin/users?error=" + e.getMessage();
         }
@@ -114,7 +136,7 @@ public class AdminController {
     public String activateUser(@PathVariable Integer id) {
         try {
             userManagementService.updateUser(id, null, null, true);
-            return "redirect:/admin/users?success=Пользователь активирован";
+            return "redirect:/admin/users?success=User+activated";
         } catch (Exception e) {
             return "redirect:/admin/users?error=" + e.getMessage();
         }
@@ -125,29 +147,9 @@ public class AdminController {
                                  @RequestParam String newPassword) {
         try {
             userManagementService.changePassword(id, newPassword);
-            return "redirect:/admin/users?success=Пароль успешно изменен";
+            return "redirect:/admin/users?success=Password+changed+successfully";
         } catch (Exception e) {
-            return "redirect:/admin/users/" + id + "/edit?error=" + e.getMessage();
+            return String.format("redirect:/admin/users/%d/edit?error=%s", id, e.getMessage());
         }
     }
-
-    @GetMapping("/system")
-    public String systemSettings(Model model) {
-        model.addAttribute("title", "Настройки системы");
-        model.addAttribute("icon", "bi-gear");
-        return "admin/system-settings";
-    }
-
-    @GetMapping("/audit")
-    public String auditLog(Model model) {
-        model.addAttribute("title", "Журнал событий");
-        model.addAttribute("icon", "bi-clock-history");
-        return "admin/audit-log";
-    }
-
-/*    @GetMapping("/api/users/stats")
-    @ResponseBody
-    public Map<String, Long> getUserStats() {
-        return userManagementService.getUserStatisticsByRole();
-    }*/
 }
