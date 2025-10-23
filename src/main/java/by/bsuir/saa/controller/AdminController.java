@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -75,10 +76,19 @@ public class AdminController {
     public String createUserForm(Model model) {
         List<Employee> employees = employeeService.getAllEmployeesWithDetails();
 
+        Map<String, String> roleLabels = new HashMap<>();
+        roleLabels.put("ADMIN", "Администратор");
+        roleLabels.put("HR", "Специалист по кадрам");
+        roleLabels.put("RATESETTER", "Нормировщик труда");
+        roleLabels.put("ACCOUNTANT", "Бухгалтер");
+        roleLabels.put("ANALYST", "Аналитик");
+
         model.addAttribute("title", "Создание пользователя");
         model.addAttribute("icon", "bi-person-plus");
         model.addAttribute("roles", List.of("ADMIN", "HR", "RATESETTER", "ACCOUNTANT", "ANALYST"));
+        model.addAttribute("roleLabels", roleLabels);
         model.addAttribute("employees", employees);
+
         return "admin/create-user";
     }
 
@@ -86,12 +96,15 @@ public class AdminController {
     public String createUser(@RequestParam String username,
                              @RequestParam String password,
                              @RequestParam(required = false) Integer employeeId,
-                             @RequestParam String role) {
+                             @RequestParam String role,
+                             RedirectAttributes redirectAttributes) {
         try {
             userManagementService.createUser(username, password, employeeId, role);
-            return "redirect:/admin/users?success=User+created+successfully";
+            redirectAttributes.addFlashAttribute("success", "Пользователь успешно создан");
+            return "redirect:/admin/users";
         } catch (Exception e) {
-            return "redirect:/admin/users/create?error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/admin/users/create";
         }
     }
 
@@ -102,10 +115,22 @@ public class AdminController {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
+        List<Employee> employees = employeeService.getAllEmployeesWithDetails();
+
+        Map<String, String> roleLabels = new HashMap<>();
+        roleLabels.put("ADMIN", "Администратор");
+        roleLabels.put("HR", "Специалист по кадрам");
+        roleLabels.put("RATESETTER", "Нормировщик труда");
+        roleLabels.put("ACCOUNTANT", "Бухгалтер");
+        roleLabels.put("ANALYST", "Аналитик");
+
         model.addAttribute("title", "Редактирование пользователя");
         model.addAttribute("icon", "bi-pencil");
         model.addAttribute("user", user);
+        model.addAttribute("employees", employees);
         model.addAttribute("roles", List.of("ADMIN", "HR", "RATESETTER", "ACCOUNTANT", "ANALYST"));
+        model.addAttribute("roleLabels", roleLabels);
+
         return "admin/edit-user";
     }
 
@@ -113,42 +138,65 @@ public class AdminController {
     public String updateUser(@PathVariable Integer id,
                              @RequestParam String username,
                              @RequestParam String role,
-                             @RequestParam Boolean isActive) {
+                             @RequestParam Boolean isActive,
+                             @RequestParam(required = false) Integer employeeId,
+                             RedirectAttributes redirectAttributes) {
         try {
-            userManagementService.updateUser(id, username, role, isActive);
-            return "redirect:/admin/users?success=User+updated+successfully";
+            userManagementService.updateUser(id, username, role, isActive, employeeId);
+            redirectAttributes.addFlashAttribute("success", "Пользователь успешно обновлен");
+            return "redirect:/admin/users";
         } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return String.format("redirect:/admin/users/%d/edit?error=%s", id, e.getMessage());
         }
     }
 
-    @PostMapping("/users/{id}/deactivate")
-    public String deactivateUser(@PathVariable Integer id) {
+    @PostMapping("/users/{id}/delete")
+    public String deleteUser(@PathVariable Integer id,
+                             RedirectAttributes redirectAttributes) {
         try {
-            userManagementService.deactivateUser(id);
-            return "redirect:/admin/users?success=User+deactivated";
+            userManagementService.deleteUser(id);
+            redirectAttributes.addFlashAttribute("success", "Пользователь удален");
         } catch (Exception e) {
-            return "redirect:/admin/users?error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
+        return "redirect:/admin/users";
     }
 
     @PostMapping("/users/{id}/activate")
-    public String activateUser(@PathVariable Integer id) {
+    public String activateUser(@PathVariable Integer id,
+                               RedirectAttributes redirectAttributes) {
         try {
-            userManagementService.updateUser(id, null, null, true);
-            return "redirect:/admin/users?success=User+activated";
+            userManagementService.activateUser(id);
+            redirectAttributes.addFlashAttribute("success", "Пользователь активирован");
         } catch (Exception e) {
-            return "redirect:/admin/users?error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
+        return "redirect:/admin/users";
+    }
+
+    @PostMapping("/users/{id}/deactivate")
+    public String deactivateUser(@PathVariable Integer id,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            userManagementService.deactivateUser(id);
+            redirectAttributes.addFlashAttribute("success", "Пользователь деактивирован");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/users";
     }
 
     @PostMapping("/users/{id}/change-password")
     public String changePassword(@PathVariable Integer id,
-                                 @RequestParam String newPassword) {
+                                 @RequestParam String newPassword,
+                                 RedirectAttributes redirectAttributes) {
         try {
             userManagementService.changePassword(id, newPassword);
-            return "redirect:/admin/users?success=Password+changed+successfully";
+            redirectAttributes.addFlashAttribute("success", "Пароль успешно изменен");
+            return "redirect:/admin/users";
         } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return String.format("redirect:/admin/users/%d/edit?error=%s", id, e.getMessage());
         }
     }

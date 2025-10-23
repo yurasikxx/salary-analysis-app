@@ -19,6 +19,18 @@
 </div>
 
 <div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <div class="card">
@@ -64,7 +76,7 @@
                         <div class="mb-3">
                             <label for="employeeId" class="form-label">Сотрудник</label>
                             <select class="form-select" id="employeeId" name="employeeId">
-                                <option value="">Выберите сотрудника (необязательно)</option>
+                                <option value="">Без привязки к сотруднику</option>
                                 <option th:each="employee : ${employees}"
                                         th:value="${employee.id}"
                                         th:text="${employee.fullName}">
@@ -81,7 +93,7 @@
                                 <option value="">Выберите роль</option>
                                 <option th:each="role : ${roles}"
                                         th:value="${role}"
-                                        th:text="${role}">
+                                        th:text="${roleLabels.get(role)}">
                                 </option>
                             </select>
                             <div class="form-text">
@@ -89,26 +101,13 @@
                             </div>
                         </div>
 
-                        <div class="alert alert-info">
-                            <h6 class="alert-heading">
-                                <i class="bi bi-info-circle"></i> Описание ролей:
-                            </h6>
-                            <ul class="mb-0 small">
-                                <li><strong>ADMIN</strong> - Полный доступ ко всем функциям системы</li>
-                                <li><strong>HR</strong> - Управление сотрудниками и табелями</li>
-                                <li><strong>RATESETTER</strong> - Расчет начислений и зарплат</li>
-                                <li><strong>ACCOUNTANT</strong> - Удержания, налоги, отчетность</li>
-                                <li><strong>ANALYST</strong> - Аналитика и отчеты по зарплатам</li>
-                            </ul>
-                        </div>
-
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a th:href="@{/admin/users}" class="btn btn-secondary me-md-2">
-                                <i class="bi bi-x-circle"></i> Отмена
-                            </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check-lg"></i> Создать пользователя
                             </button>
+                            <a th:href="@{/admin/users}" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Отмена
+                            </a>
                         </div>
                     </form>
                 </div>

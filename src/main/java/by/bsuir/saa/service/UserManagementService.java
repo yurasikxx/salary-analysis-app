@@ -6,6 +6,8 @@ import by.bsuir.saa.entity.UserRole;
 import by.bsuir.saa.repository.EmployeeRepository;
 import by.bsuir.saa.repository.UserRepository;
 import by.bsuir.saa.repository.UserRoleRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,8 +48,11 @@ public class UserManagementService {
             throw new RuntimeException("Пользователь с таким логином уже существует");
         }
 
-        Employee employee = employeeService.getEmployeeById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Сотрудник не найден:" + employeeId.toString()));
+        Employee employee = null;
+        if (employeeId != null) {
+            employee = employeeService.getEmployeeById(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Сотрудник не найден: " + employeeId));
+        }
 
         UserRole role = userRoleRepository.findByName(roleName)
                 .orElseThrow(() -> new RuntimeException("Роль не найдена: " + roleName));
@@ -62,15 +67,16 @@ public class UserManagementService {
         return userRepository.save(user);
     }
 
-    public User updateUser(Integer userId, String username, String roleName, Boolean isActive) {
+    public User updateUser(Integer userId, String username, String roleName, Boolean isActive, Integer employeeId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-        if (!user.getUsername().equals(username) && userRepository.existsByUsername(username)) {
-            throw new RuntimeException("Пользователь с таким логином уже существует");
+        if (username != null) {
+            if (!user.getUsername().equals(username) && userRepository.existsByUsername(username)) {
+                throw new RuntimeException("Пользователь с таким логином уже существует");
+            }
+            user.setUsername(username);
         }
-
-        user.setUsername(username);
 
         if (roleName != null) {
             UserRole role = userRoleRepository.findByName(roleName)
@@ -82,7 +88,27 @@ public class UserManagementService {
             user.setIsActive(isActive);
         }
 
+        if (employeeId != null) {
+            Employee employee = employeeService.getEmployeeById(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Сотрудник не найден: " + employeeId));
+            user.setEmployee(employee);
+        } else {
+            user.setEmployee(null);
+        }
+
         return userRepository.save(user);
+    }
+
+    public void deleteUser(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getName().equals(user.getUsername())) {
+            throw new RuntimeException("Нельзя удалить собственный аккаунт");
+        }
+
+        userRepository.delete(user);
     }
 
     public void changePassword(Integer userId, String newPassword) {
@@ -93,9 +119,22 @@ public class UserManagementService {
         userRepository.save(user);
     }
 
+    public void activateUser(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        user.setIsActive(true);
+        userRepository.save(user);
+    }
+
     public void deactivateUser(Integer userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getName().equals(user.getUsername())) {
+            throw new RuntimeException("Нельзя деактивировать собственный аккаунт");
+        }
 
         user.setIsActive(false);
         userRepository.save(user);
@@ -107,15 +146,6 @@ public class UserManagementService {
 
     public Map<String, Long> getUserStatisticsByRole() {
         List<User> users = userRepository.findAll();
-        return users.stream()
-                .collect(Collectors.groupingBy(
-                        user -> user.getRole().getName(),
-                        Collectors.counting()
-                ));
-    }
-
-    public Map<String, Long> getActiveUserStatisticsByRole() {
-        List<User> users = userRepository.findByIsActiveTrue();
         return users.stream()
                 .collect(Collectors.groupingBy(
                         user -> user.getRole().getName(),
