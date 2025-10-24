@@ -2,14 +2,20 @@ package by.bsuir.saa.controller;
 
 import by.bsuir.saa.entity.*;
 import by.bsuir.saa.service.*;
+import by.bsuir.saa.util.MonthUtil;
+import org.hibernate.Hibernate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -22,17 +28,20 @@ public class HrController {
     private final PositionService positionService;
     private final DepartmentService departmentService;
     private final UserManagementService userManagementService;
+    private final MarkTypeService markTypeService;
 
     public HrController(EmployeeService employeeService,
                         TimesheetService timesheetService,
                         PositionService positionService,
                         DepartmentService departmentService,
-                        UserManagementService userManagementService) {
+                        UserManagementService userManagementService,
+                        MarkTypeService markTypeService) {
         this.employeeService = employeeService;
         this.timesheetService = timesheetService;
         this.positionService = positionService;
         this.departmentService = departmentService;
         this.userManagementService = userManagementService;
+        this.markTypeService = markTypeService;
     }
 
     @GetMapping("/dashboard")
@@ -44,6 +53,7 @@ public class HrController {
         model.addAttribute("icon", "bi-person-badge");
         model.addAttribute("month", month);
         model.addAttribute("year", year);
+        model.addAttribute("russianMonth", MonthUtil.getRussianMonthName(month));
 
         long totalEmployees = employeeService.getActiveEmployees().size();
         long totalDepartments = departmentService.getAllDepartments().size();
@@ -95,6 +105,18 @@ public class HrController {
                 .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
         model.addAttribute("employee", employee);
 
+        LocalDate endDate = employee.getTerminationDate() != null ?
+                employee.getTerminationDate() : LocalDate.now();
+
+        long years = java.time.temporal.ChronoUnit.YEARS.between(employee.getHireDate(), endDate);
+        long months = java.time.temporal.ChronoUnit.MONTHS.between(
+                employee.getHireDate().plusYears(years), endDate);
+        long days = java.time.temporal.ChronoUnit.DAYS.between(
+                employee.getHireDate().plusYears(years).plusMonths(months), endDate);
+
+        String workExperience = years + " лет " + months + " месяцев " + days + " дней";
+        model.addAttribute("workExperience", workExperience);
+
         return "hr/employee-profile";
     }
 
@@ -116,7 +138,8 @@ public class HrController {
     public String createEmployee(@RequestParam String fullName,
                                  @RequestParam String hireDate,
                                  @RequestParam Integer positionId,
-                                 @RequestParam Integer departmentId) {
+                                 @RequestParam Integer departmentId,
+                                 RedirectAttributes redirectAttributes) {
 
         try {
             Position position = positionService.getPositionById(positionId)
@@ -127,22 +150,26 @@ public class HrController {
 
             employeeService.createEmployee(fullName, LocalDate.parse(hireDate), position, department);
 
-            return "redirect:/hr/employees?success=Сотрудник " + fullName + " успешно создан";
+            redirectAttributes.addFlashAttribute("success", "Сотрудник " + fullName + " успешно создан");
+            return "redirect:/hr/employees";
 
         } catch (Exception e) {
-            return "redirect:/hr/employees/create?error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/hr/employees/create";
         }
     }
 
     @PostMapping("/employees/{id}/terminate")
     public String terminateEmployee(@PathVariable Integer id,
-                                    @RequestParam String terminationDate) {
+                                    @RequestParam String terminationDate,
+                                    RedirectAttributes redirectAttributes) {
         try {
             employeeService.terminateEmployee(id, LocalDate.parse(terminationDate));
-            return "redirect:/hr/employees?success=Сотрудник успешно уволен";
+            redirectAttributes.addFlashAttribute("success", "Сотрудник успешно уволен");
         } catch (Exception e) {
-            return "redirect:/hr/employees?error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
+        return "redirect:/hr/employees";
     }
 
     @GetMapping("/timesheets")
@@ -182,6 +209,7 @@ public class HrController {
         model.addAttribute("confirmedCount", confirmedCount);
         model.addAttribute("draftCount", draftCount);
         model.addAttribute("averageHours", String.format("%.1f", averageHours));
+        model.addAttribute("russianMonth", MonthUtil.getRussianMonthName(month));
 
         return "hr/timesheets";
     }
@@ -194,12 +222,13 @@ public class HrController {
 
         model.addAttribute("title", "Создать табель");
         model.addAttribute("icon", "bi-calendar-plus");
+        model.addAttribute("russianMonth", MonthUtil.getRussianMonthName(month));
 
-        List<Employee> activeEmployees = employeeService.getAllEmployees().stream()
-                .filter(e -> e.getTerminationDate() == null)
-                .collect(Collectors.toList());
+        List<Employee> activeEmployees = employeeService.getActiveEmployees();
+        List<Department> departments = departmentService.getAllDepartments();
 
         model.addAttribute("employees", activeEmployees);
+        model.addAttribute("departments", departments);
         model.addAttribute("month", month);
         model.addAttribute("year", year);
         model.addAttribute("selectedEmployeeId", employeeId);
@@ -210,51 +239,161 @@ public class HrController {
     @PostMapping("/timesheets")
     public String createTimesheet(@RequestParam Integer employeeId,
                                   @RequestParam Integer month,
-                                  @RequestParam Integer year) {
+                                  @RequestParam Integer year,
+                                  RedirectAttributes redirectAttributes) {
         try {
             Employee employee = employeeService.getEmployeeById(employeeId)
                     .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
             if (timesheetService.getTimesheet(employee, month, year).isPresent()) {
-                return "redirect:/hr/timesheets/create?month=" + month + "&year=" + year +
-                        "&error=Табель для сотрудника уже существует за указанный период";
+                redirectAttributes.addFlashAttribute("error", "Табель для сотрудника уже существует за указанный период");
+                return "redirect:/hr/timesheets/create?month=%d&year=%d".formatted(month, year);
             }
 
             Timesheet timesheet = timesheetService.getOrCreateTimesheet(employee, month, year);
 
-            return "redirect:/hr/timesheets/" + timesheet.getId() + "/edit?success=Табель создан";
+            redirectAttributes.addFlashAttribute("success", "Табель успешно создан");
+            return "redirect:/hr/timesheets/%d/edit".formatted(timesheet.getId());
 
         } catch (Exception e) {
-            return "redirect:/hr/timesheets/create?month=" + month + "&year=" + year +
-                    "&error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/hr/timesheets/create?month=%d&year=%d".formatted(month, year);
         }
     }
 
     @GetMapping("/timesheets/{id}/edit")
     public String editTimesheetForm(@PathVariable Integer id, Model model) {
-        model.addAttribute("title", "Редактирование табеля");
-        model.addAttribute("icon", "bi-pencil");
-
         Timesheet timesheet = timesheetService.getTimesheetById(id)
                 .orElseThrow(() -> new RuntimeException("Табель не найден"));
 
+        Hibernate.initialize(timesheet.getEmployee());
+        Hibernate.initialize(timesheet.getEmployee().getDepartment());
+        Hibernate.initialize(timesheet.getEmployee().getPosition());
+
+        model.addAttribute("title", "Редактирование табеля - " + timesheet.getEmployee().getFullName());
+        model.addAttribute("icon", "bi-pencil");
+        model.addAttribute("russianMonth", MonthUtil.getRussianMonthName(timesheet.getMonth()));
         model.addAttribute("timesheet", timesheet);
+
+        List<LocalDate> monthDays = getDaysInMonth(timesheet.getYear(), timesheet.getMonth());
+        model.addAttribute("monthDays", monthDays);
+
+        Map<LocalDate, TimesheetEntry> entriesMap = timesheetService.getTimesheetEntriesMap(timesheet);
+        model.addAttribute("entriesMap", entriesMap);
+
+        System.out.println("=== ДЕБАГ ИНФОРМАЦИЯ ===");
+        System.out.println("Табель ID: " + timesheet.getId());
+        System.out.println("Сотрудник: " + timesheet.getEmployee().getFullName());
+        System.out.println("Записей в entriesMap: " + entriesMap.size());
+
+        for (LocalDate day : monthDays) {
+            TimesheetEntry entry = entriesMap.get(day);
+            if (entry != null) {
+                System.out.println("День " + day + ": " +
+                        entry.getMarkType().getCode() + " - " +
+                        entry.getHoursWorked() + "ч.");
+            }
+        }
+
+        // Типы отметок
+        List<MarkType> markTypes = markTypeService.getAllMarkTypes();
+        model.addAttribute("markTypes", markTypes);
 
         return "hr/edit-timesheet";
     }
 
+    @PostMapping("/timesheets/{id}/entries")
+    public String saveTimesheetEntries(@PathVariable Integer id,
+                                       @RequestParam Map<String, String> allParams,
+                                       RedirectAttributes redirectAttributes) {
+        try {
+            Timesheet timesheet = timesheetService.getTimesheetById(id)
+                    .orElseThrow(() -> new RuntimeException("Табель не найден"));
+
+            Map<String, String> dayEntries = new HashMap<>();
+
+            for (String key : allParams.keySet()) {
+                if (key.startsWith("markType_")) {
+                    String dateStr = key.substring(9);
+                    String markTypeCode = allParams.get(key);
+                    String hoursKey = "hours_" + dateStr;
+                    String hoursValue = allParams.get(hoursKey);
+
+                    if (markTypeCode != null && !markTypeCode.isEmpty() &&
+                            hoursValue != null && !hoursValue.isEmpty()) {
+                        dayEntries.put("day_" + dateStr, markTypeCode + "_" + hoursValue);
+                    }
+                }
+            }
+
+            System.out.println("Сохранение " + dayEntries.size() + " записей");
+            timesheetService.saveTimesheetEntries(id, dayEntries);
+
+            redirectAttributes.addFlashAttribute("success", "Табель успешно сохранен");
+            return "redirect:/hr/timesheets/" + id + "/edit";
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Ошибка: " + e.getMessage());
+            e.printStackTrace();
+            return "redirect:/hr/timesheets/" + id + "/edit";
+        }
+    }
+
     @PostMapping("/timesheets/{id}/confirm")
-    public String confirmTimesheet(@PathVariable Integer id, Authentication authentication) {
+    public String confirmTimesheet(@PathVariable Integer id,
+                                   Authentication authentication,
+                                   RedirectAttributes redirectAttributes) {
         try {
             User currentUser = userManagementService.findUserByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
             timesheetService.confirmTimesheet(id, currentUser);
 
-            return "redirect:/hr/timesheets?success=Табель подтвержден";
+            redirectAttributes.addFlashAttribute("success", "Табель подтвержден");
+            return "redirect:/hr/timesheets/%d/edit".formatted(id);
 
         } catch (Exception e) {
-            return "redirect:/hr/timesheets?error=" + e.getMessage();
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/hr/timesheets/%d/edit".formatted(id);
+        }
+    }
+
+    private List<LocalDate> getDaysInMonth(int year, int month) {
+        List<LocalDate> days = new ArrayList<>();
+        LocalDate firstDay = LocalDate.of(year, month, 1);
+        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
+
+        LocalDate currentDay = firstDay;
+        while (!currentDay.isAfter(lastDay)) {
+            days.add(currentDay);
+            currentDay = currentDay.plusDays(1);
+        }
+
+        return days;
+    }
+
+    @PostMapping("/timesheets/batch-create")
+    public String batchCreateTimesheets(@RequestParam Integer month,
+                                        @RequestParam Integer year,
+                                        RedirectAttributes redirectAttributes) {
+        try {
+            List<Employee> activeEmployees = employeeService.getActiveEmployees();
+            int createdCount = 0;
+
+            for (Employee employee : activeEmployees) {
+                if (timesheetService.getTimesheet(employee, month, year).isEmpty()) {
+                    timesheetService.getOrCreateTimesheet(employee, month, year);
+                    createdCount++;
+                }
+            }
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Создано " + createdCount + " табелей за " + MonthUtil.getRussianMonthName(month) + " " + year);
+            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
         }
     }
 }

@@ -3,6 +3,8 @@ package by.bsuir.saa.repository;
 import by.bsuir.saa.entity.Timesheet;
 import by.bsuir.saa.entity.TimesheetEntry;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -17,4 +19,7 @@ public interface TimesheetEntryRepository extends JpaRepository<TimesheetEntry, 
     Optional<TimesheetEntry> findByTimesheetAndDate(Timesheet timesheet, LocalDate date);
 
     void deleteByTimesheet(Timesheet timesheet);
+
+    @Query("SELECT te FROM TimesheetEntry te JOIN FETCH te.markType WHERE te.timesheet = :timesheet")
+    List<TimesheetEntry> findByTimesheetWithMarkType(@Param("timesheet") Timesheet timesheet);
 }

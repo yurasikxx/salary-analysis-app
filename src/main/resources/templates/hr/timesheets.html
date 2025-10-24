@@ -13,9 +13,19 @@
 )}">
 
 <div id="actions">
-    <a th:href="@{/hr/timesheets/create}" class="btn btn-success">
+    <a th:href="@{/hr/timesheets/create(month=${month}, year=${year})}" class="btn btn-success me-2">
         <i class="bi bi-plus-circle"></i> Создать табель
     </a>
+    <form th:action="@{/hr/timesheets/batch-create}" method="post" class="d-inline">
+        <input type="hidden" name="month" th:value="${month}">
+        <input type="hidden" name="year" th:value="${year}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn btn-outline-primary"
+                th:onclick="'return confirm(\'Создать табели для всех активных сотрудников за ' +
+                         '[[${russianMonth}]] [[${year}]]?\')'">
+            <i class="bi bi-collection"></i> Создать все табели
+        </button>
+    </form>
 </div>
 
 <div id="content">
@@ -128,28 +138,35 @@
                     <tbody>
                     <tr th:each="timesheet : ${timesheets}">
                         <td>
-                            <strong th:text="${timesheet.employee.fullName}"></strong>
-                        </td>
-                        <td th:text="${timesheet.employee.department.name}"></td>
-                        <td class="text-center">
-                            <span th:text="${timesheet.totalHours} + ' ч.'"
-                                  th:class="${timesheet.totalHours > 0 ? 'fw-bold text-primary' : ''}">
-                            </span>
-                        </td>
-                        <td class="text-center">
-                            <span th:if="${timesheet.status.name() == 'CONFIRMED'}"
-                                  class="badge bg-success">
-                                <i class="bi bi-check-circle"></i> Подтверждён
-                            </span>
-                            <span th:unless="${timesheet.status.name() == 'CONFIRMED'}"
-                                  class="badge bg-warning">
-                                <i class="bi bi-pencil"></i> Черновик
-                            </span>
+                            <a th:href="@{/hr/employees/{id}(id=${timesheet.employee.id})}" class="text-decoration-none">
+                                <strong th:text="${timesheet.employee.fullName}"></strong>
+                            </a>
                         </td>
                         <td>
-                            <span th:if="${timesheet.confirmedAt != null}"
-                                  th:text="${#temporals.format(timesheet.confirmedAt, 'dd.MM.yyyy HH:mm')}">
-                            </span>
+                            <a th:href="@{/hr/timesheets(departmentId=${timesheet.employee.department.id}, month=${month}, year=${year})}"
+                               class="text-decoration-none">
+                                <span th:text="${timesheet.employee.department.name}"></span>
+                            </a>
+                        </td>
+                        <td class="text-center">
+            <span th:text="${timesheet.totalHours} + ' ч.'"
+                  th:class="${timesheet.totalHours > 0 ? 'fw-bold text-primary' : ''}">
+            </span>
+                        </td>
+                        <td class="text-center">
+            <span th:if="${timesheet.status.name() == 'CONFIRMED'}"
+                  class="badge bg-success">
+                <i class="bi bi-check-circle"></i> Подтверждён
+            </span>
+                            <span th:unless="${timesheet.status.name() == 'CONFIRMED'}"
+                                  class="badge bg-warning">
+                <i class="bi bi-pencil"></i> Черновик
+            </span>
+                        </td>
+                        <td>
+            <span th:if="${timesheet.confirmedAt != null}"
+                  th:text="${#temporals.format(timesheet.confirmedAt, 'dd.MM.yyyy HH:mm')}">
+            </span>
                             <span th:unless="${timesheet.confirmedAt != null}"
                                   class="text-muted">Не подтверждён</span>
                         </td>
@@ -165,20 +182,10 @@
                                         data-bs-toggle="modal"
                                         data-bs-target="#confirmModal"
                                         th:attr="data-bs-timesheet-id=${timesheet.id},
-                                                 data-bs-employee-name=${timesheet.employee.fullName}">
+                                 data-bs-employee-name=${timesheet.employee.fullName}">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
                             </div>
-                        </td>
-                    </tr>
-                    <tr th:if="${#lists.isEmpty(timesheets)}">
-                        <td colspan="6" class="text-center text-muted py-4">
-                            <i class="bi bi-calendar-x display-4"></i>
-                            <p class="mt-2">Табели не найдены</p>
-                            <p class="small">Измените параметры фильтра или создайте табели для сотрудников</p>
-                            <a th:href="@{/hr/timesheets/create}" class="btn btn-primary mt-2">
-                                <i class="bi bi-plus-circle"></i> Создать первый табель
-                            </a>
                         </td>
                     </tr>
                     </tbody>

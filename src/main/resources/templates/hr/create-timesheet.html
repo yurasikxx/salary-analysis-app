@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Создать табель - HR</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Создать табель',
+    icon='bi-calendar-plus',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <a th:href="@{/hr/timesheets(month=${month}, year=${year})}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-plus"></i> Создание нового табеля
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/hr/timesheets}" method="post">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="employeeId" class="form-label">Сотрудник *</label>
+                                    <select class="form-select" id="employeeId" name="employeeId" required>
+                                        <option value="">Выберите сотрудника</option>
+                                        <option th:each="employee : ${employees}"
+                                                th:value="${employee.id}"
+                                                th:selected="${selectedEmployeeId == employee.id}"
+                                                th:text="${employee.fullName + ' - ' + employee.department.name}">
+                                        </option>
+                                    </select>
+                                    <div class="form-text">Выберите сотрудника для ведения табеля</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="month" class="form-label">Месяц *</label>
+                                    <select class="form-select" id="month" name="month" required>
+                                        <option th:each="m : ${#numbers.sequence(1,12)}"
+                                                th:value="${m}"
+                                                th:selected="${month == m}"
+                                                th:text="${@monthUtil.getRussianMonthName(m)}">
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="year" class="form-label">Год *</label>
+                                    <select class="form-select" id="year" name="year" required>
+                                        <option th:each="y : ${#numbers.sequence(2023, 2026)}"
+                                                th:value="${y}"
+                                                th:selected="${year == y}"
+                                                th:text="${y}">
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-info-circle"></i> Информация о периоде
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Выбранный период:</strong></p>
+                                        <p class="h5 text-primary" th:text="${@monthUtil.getRussianMonthName(month) + ' ' + year}"></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Количество рабочих дней:</strong></p>
+                                        <p class="h5 text-success" th:text="${21} + ' дней'"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a th:href="@{/hr/timesheets(month=${month}, year=${year})}" class="btn btn-secondary me-md-2">
+                                        <i class="bi bi-x-circle"></i> Отмена
+                                    </a>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Создать табель
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightbulb"></i> Рекомендации
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-check-circle text-success"></i> Перед созданием:</h6>
+                            <ul class="small">
+                                <li>Убедитесь, что табель за выбранный период еще не создан</li>
+                                <li>Проверьте актуальность данных сотрудника</li>
+                                <li>Выберите корректный отчетный период</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-pencil-square text-primary"></i> После создания:</h6>
+                            <ul class="small">
+                                <li>Заполните учет рабочего времени по дням</li>
+                                <li>Укажите все отклонения от графика</li>
+                                <li>Подтвердите табель после проверки</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-clock-history text-warning"></i> Сроки заполнения:</h6>
+                            <ul class="small">
+                                <li>Ежедневно - учет явок/неявок</li>
+                                <li>До 25 числа - заполнение за месяц</li>
+                                <li>До 28 числа - подтверждение табеля</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const employeeSelect = document.getElementById('employeeId');
+            const monthSelect = document.getElementById('month');
+            const yearSelect = document.getElementById('year');
+
+            // Можно добавить проверку на существование табеля
+            function checkTimesheetExists() {
+                // Здесь можно добавить AJAX запрос для проверки
+            }
+
+            [employeeSelect, monthSelect, yearSelect].forEach(select => {
+                select.addEventListener('change', checkTimesheetExists);
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

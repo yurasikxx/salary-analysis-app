@@ -23,7 +23,7 @@ public class TimesheetEntry {
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "mark_type_id", nullable = false)
     private MarkType markType;
 

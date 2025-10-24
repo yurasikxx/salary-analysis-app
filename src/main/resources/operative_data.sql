@@ -1,17 +1,29 @@
-INSERT INTO timesheets (employee_id, month, year, total_hours, status)
-VALUES (7, 9, 2025, 160, 'confirmed'),
-       (8, 9, 2025, 168, 'confirmed'),
-       (9, 9, 2025, 176, 'confirmed'),
-       (10, 9, 2025, 160, 'draft')
-ON CONFLICT DO NOTHING;
+INSERT INTO timesheets (employee_id, month, year, total_hours, status, created_at)
+SELECT
+    e.id,
+    EXTRACT(MONTH FROM CURRENT_DATE),
+    EXTRACT(YEAR FROM CURRENT_DATE),
+    160.0,
+    'DRAFT',
+    CURRENT_TIMESTAMP
+FROM employees e
+WHERE e.termination_date IS NULL
+ON CONFLICT (employee_id, month, year) DO NOTHING;
 
-INSERT INTO payments (employee_id, month, year, payment_type_id, amount, description)
-VALUES (7, 9, 2025, 1, 1800.00, 'Оклад за декабрь'),
-       (8, 9, 2025, 1, 2000.00, 'Оклад за декабрь'),
-       (9, 9, 2025, 1, 2200.00, 'Оклад за декабрь'),
-
-       (7, 9, 2025, 2, 500.00, 'Премия ИТР за качественную работу'),
-
-       (7, 9, 2025, 7, 234.00, 'Подоходный налог'),
-       (8, 9, 2025, 7, 260.00, 'Подоходный налог')
+INSERT INTO timesheet_entries (timesheet_id, date, mark_type_id, hours_worked, created_at)
+SELECT
+    t.id,
+    CURRENT_DATE - INTERVAL '1 day' * (s.day_index),
+    mt.id,
+    CASE
+        WHEN EXTRACT(DOW FROM CURRENT_DATE - INTERVAL '1 day' * (s.day_index)) IN (0, 6) THEN 0.0
+        ELSE 8.0
+        END,
+    CURRENT_TIMESTAMP
+FROM timesheets t
+         CROSS JOIN (SELECT generate_series(1, 10) as day_index) s
+         CROSS JOIN mark_types mt
+WHERE mt.code = 'Я'
+  AND EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 day' * (s.day_index)) = EXTRACT(MONTH FROM CURRENT_DATE)
+  AND EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 day' * (s.day_index)) = EXTRACT(YEAR FROM CURRENT_DATE)
 ON CONFLICT DO NOTHING;

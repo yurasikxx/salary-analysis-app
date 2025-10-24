@@ -72,6 +72,18 @@ public class EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
+        if (employee.getTerminationDate() != null) {
+            throw new RuntimeException("Сотрудник уже уволен");
+        }
+
+        if (terminationDate.isBefore(employee.getHireDate())) {
+            throw new RuntimeException("Дата увольнения не может быть раньше даты приема");
+        }
+
+        if (terminationDate.isAfter(LocalDate.now())) {
+            throw new RuntimeException("Дата увольнения не может быть в будущем");
+        }
+
         employee.setTerminationDate(terminationDate);
         employeeRepository.save(employee);
     }

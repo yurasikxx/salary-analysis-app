@@ -94,6 +94,18 @@
                         </a>
                     </li>
 
+                    <li class="nav-item" sec:authorize="hasRole('HR')">
+                        <a class="nav-link" th:href="@{/hr/employees}">
+                            <i class="bi bi-person-badge"></i> Сотрудники
+                        </a>
+                    </li>
+
+                    <li class="nav-item" sec:authorize="hasRole('HR')">
+                        <a class="nav-link" th:href="@{/hr/timesheets(month=${month}, year=${year})}">
+                            <i class="bi bi-calendar-check"></i> Табельный учёт
+                        </a>
+                    </li>
+
                     <li class="nav-item" sec:authorize="hasRole('RATESETTER')">
                         <a class="nav-link" th:href="@{/ratesetter/dashboard}">
                             <i class="bi bi-gear"></i> Главная
