@@ -16,6 +16,7 @@ public interface TimesheetEntryRepository extends JpaRepository<TimesheetEntry, 
 
     List<TimesheetEntry> findByTimesheet(Timesheet timesheet);
 
+
     Optional<TimesheetEntry> findByTimesheetAndDate(Timesheet timesheet, LocalDate date);
 
     void deleteByTimesheet(Timesheet timesheet);

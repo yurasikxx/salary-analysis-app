@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Создать табель - HR</title>
+    <title>Создать табель - Специалист по кадрам</title>
 </head>
 <body th:replace="~{layout :: html(
     title='Создать табель',
@@ -60,10 +60,10 @@
                                 <div class="mb-3">
                                     <label for="month" class="form-label">Месяц *</label>
                                     <select class="form-select" id="month" name="month" required>
-                                        <option th:each="m : ${#numbers.sequence(1,12)}"
-                                                th:value="${m}"
-                                                th:selected="${month == m}"
-                                                th:text="${@monthUtil.getRussianMonthName(m)}">
+                                        <option th:each="monthEntry : ${russianMonths}"
+                                                th:value="${monthEntry.key}"
+                                                th:selected="${month == monthEntry.key}"
+                                                th:text="${monthEntry.value}">
                                         </option>
                                     </select>
                                 </div>
@@ -82,73 +82,20 @@
                             </div>
                         </div>
 
-                        <div class="card bg-light mb-4">
-                            <div class="card-body">
-                                <h6 class="card-title">
-                                    <i class="bi bi-info-circle"></i> Информация о периоде
-                                </h6>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <p class="mb-1"><strong>Выбранный период:</strong></p>
-                                        <p class="h5 text-primary" th:text="${@monthUtil.getRussianMonthName(month) + ' ' + year}"></p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p class="mb-1"><strong>Количество рабочих дней:</strong></p>
-                                        <p class="h5 text-success" th:text="${21} + ' дней'"></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <a th:href="@{/hr/timesheets(month=${month}, year=${year})}" class="btn btn-secondary me-md-2">
-                                        <i class="bi bi-x-circle"></i> Отмена
-                                    </a>
                                     <button type="submit" class="btn btn-success">
                                         <i class="bi bi-check-circle"></i> Создать табель
                                     </button>
+                                    <a th:href="@{/hr/timesheets(month=${month}, year=${year})}"
+                                       class="btn btn-secondary me-md-2">
+                                        <i class="bi bi-x-circle"></i> Отмена
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     </form>
-                </div>
-            </div>
-
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="bi bi-lightbulb"></i> Рекомендации
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <h6><i class="bi bi-check-circle text-success"></i> Перед созданием:</h6>
-                            <ul class="small">
-                                <li>Убедитесь, что табель за выбранный период еще не создан</li>
-                                <li>Проверьте актуальность данных сотрудника</li>
-                                <li>Выберите корректный отчетный период</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-4">
-                            <h6><i class="bi bi-pencil-square text-primary"></i> После создания:</h6>
-                            <ul class="small">
-                                <li>Заполните учет рабочего времени по дням</li>
-                                <li>Укажите все отклонения от графика</li>
-                                <li>Подтвердите табель после проверки</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-4">
-                            <h6><i class="bi bi-clock-history text-warning"></i> Сроки заполнения:</h6>
-                            <ul class="small">
-                                <li>Ежедневно - учет явок/неявок</li>
-                                <li>До 25 числа - заполнение за месяц</li>
-                                <li>До 28 числа - подтверждение табеля</li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -157,14 +104,12 @@
 
 <div id="scripts">
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const employeeSelect = document.getElementById('employeeId');
             const monthSelect = document.getElementById('month');
             const yearSelect = document.getElementById('year');
 
-            // Можно добавить проверку на существование табеля
             function checkTimesheetExists() {
-                // Здесь можно добавить AJAX запрос для проверки
             }
 
             [employeeSelect, monthSelect, yearSelect].forEach(select => {

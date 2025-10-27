@@ -3,17 +3,13 @@ package by.bsuir.saa.service;
 import by.bsuir.saa.entity.*;
 import by.bsuir.saa.repository.TimesheetRepository;
 import by.bsuir.saa.repository.TimesheetEntryRepository;
-import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Transactional
@@ -31,6 +27,10 @@ public class TimesheetService {
         this.markTypeService = markTypeService;
     }
 
+    public Optional<Timesheet> getTimesheetById(Integer id) {
+        return timesheetRepository.findById(id);
+    }
+
     public Optional<Timesheet> getTimesheet(Employee employee, Integer month, Integer year) {
         return timesheetRepository.findByEmployeeAndMonthAndYear(employee, month, year);
     }
@@ -43,75 +43,95 @@ public class TimesheetService {
                     timesheet.setMonth(month);
                     timesheet.setYear(year);
                     timesheet.setTotalHours(BigDecimal.ZERO);
+                    timesheet.setStatus(Timesheet.TimesheetStatus.DRAFT);
                     return timesheetRepository.save(timesheet);
                 });
-    }
-
-    public TimesheetEntry addTimesheetEntry(Timesheet timesheet, LocalDate date,
-                                            MarkType markType, BigDecimal hours) {
-        TimesheetEntry entry = new TimesheetEntry();
-        entry.setTimesheet(timesheet);
-        entry.setDate(date);
-        entry.setMarkType(markType);
-        entry.setHoursWorked(hours);
-
-        TimesheetEntry savedEntry = timesheetEntryRepository.save(entry);
-
-        updateTotalHours(timesheet);
-
-        return savedEntry;
-    }
-
-    public void confirmTimesheet(Timesheet timesheet, User confirmedBy) {
-        timesheet.setStatus(Timesheet.TimesheetStatus.CONFIRMED);
-        timesheet.setConfirmedBy(confirmedBy);
-        timesheet.setConfirmedAt(java.time.LocalDateTime.now());
-        timesheetRepository.save(timesheet);
-    }
-
-    public List<TimesheetEntry> getTimesheetEntries(Timesheet timesheet) {
-        List<TimesheetEntry> entries = timesheetEntryRepository.findByTimesheetWithMarkType(timesheet);
-        System.out.println("Запрос записей для табеля " + timesheet.getId() + ": найдено " + entries.size());
-
-        entries.forEach(entry -> {
-            System.out.println("Запись: " + entry.getDate() + " - " +
-                    entry.getMarkType().getCode() + " - " +
-                    entry.getHoursWorked());
-        });
-
-        return entries;
-    }
-
-    public Map<LocalDate, TimesheetEntry> getTimesheetEntriesMap(Timesheet timesheet) {
-        List<TimesheetEntry> entries = timesheetEntryRepository.findByTimesheet(timesheet);
-        Map<LocalDate, TimesheetEntry> entriesMap = new HashMap<>();
-
-        for (TimesheetEntry entry : entries) {
-            if (entry.getMarkType() != null) {
-                Hibernate.initialize(entry.getMarkType());
-            }
-            entriesMap.put(entry.getDate(), entry);
-        }
-
-        return entriesMap;
-    }
-
-    private void updateTotalHours(Timesheet timesheet) {
-        List<TimesheetEntry> entries = timesheetEntryRepository.findByTimesheet(timesheet);
-        BigDecimal total = entries.stream()
-                .map(TimesheetEntry::getHoursWorked)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        timesheet.setTotalHours(total);
-        timesheetRepository.save(timesheet);
     }
 
     public List<Timesheet> getTimesheetsByPeriod(Integer month, Integer year) {
         return timesheetRepository.findByMonthAndYear(month, year);
     }
 
-    public Optional<Timesheet> getTimesheetById(Integer id) {
-        return timesheetRepository.findById(id);
+    public List<Timesheet> getTimesheetsByEmployee(Employee employee) {
+        return timesheetRepository.findByEmployee(employee);
+    }
+
+    public Map<LocalDate, TimesheetEntry> getTimesheetEntriesMap(Timesheet timesheet) {
+        List<TimesheetEntry> entries = timesheetEntryRepository.findByTimesheetWithMarkType(timesheet);
+        Map<LocalDate, TimesheetEntry> entriesMap = new HashMap<>();
+
+        for (TimesheetEntry entry : entries) {
+            entriesMap.put(entry.getDate(), entry);
+        }
+
+        return entriesMap;
+    }
+
+    @Transactional
+    public void saveTimesheetEntries(Integer timesheetId, Map<String, String> dayEntries) {
+        Timesheet timesheet = timesheetRepository.findById(timesheetId)
+                .orElseThrow(() -> new RuntimeException("Табель не найден"));
+
+        timesheetEntryRepository.deleteByTimesheet(timesheet);
+
+        int savedCount = 0;
+        for (Map.Entry<String, String> entry : dayEntries.entrySet()) {
+            if (entry.getKey().startsWith("day_")) {
+                String dayStr = entry.getKey().substring(4);
+                LocalDate date = LocalDate.parse(dayStr);
+                String value = entry.getValue();
+
+                if (value != null && !value.trim().isEmpty()) {
+                    try {
+                        String[] parts = value.split("_");
+                        if (parts.length == 2) {
+                            String markTypeCode = parts[0];
+                            BigDecimal hours = new BigDecimal(parts[1]);
+
+                            MarkType markType = markTypeService.getMarkTypeByCode(markTypeCode)
+                                    .orElseThrow(() -> new RuntimeException("Тип отметки не найден: " + markTypeCode));
+
+                            TimesheetEntry timesheetEntry = new TimesheetEntry();
+                            timesheetEntry.setTimesheet(timesheet);
+                            timesheetEntry.setDate(date);
+                            timesheetEntry.setMarkType(markType);
+                            timesheetEntry.setHoursWorked(hours);
+
+                            timesheetEntryRepository.save(timesheetEntry);
+                            savedCount++;
+                        }
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+
+        updateTotalHours(timesheet);
+    }
+
+    @Transactional
+    public void fillFullMonth(Timesheet timesheet) {
+        timesheetEntryRepository.deleteByTimesheet(timesheet);
+
+        List<LocalDate> monthDays = getDaysInMonth(timesheet.getYear(), timesheet.getMonth());
+
+        MarkType workMarkType = markTypeService.getMarkTypeByCode("Я")
+                .orElseThrow(() -> new RuntimeException("Тип отметки 'Явка' не найден"));
+
+        for (LocalDate day : monthDays) {
+            if (day.getDayOfWeek().getValue() >= 1 && day.getDayOfWeek().getValue() <= 5) {
+                TimesheetEntry entry = new TimesheetEntry();
+                entry.setTimesheet(timesheet);
+                entry.setDate(day);
+                entry.setMarkType(workMarkType);
+                entry.setHoursWorked(new BigDecimal("8"));
+
+                timesheetEntryRepository.save(entry);
+            }
+        }
+
+        updateTotalHours(timesheet);
     }
 
     public void confirmTimesheet(Integer timesheetId, User confirmedBy) {
@@ -121,24 +141,7 @@ public class TimesheetService {
         timesheet.setStatus(Timesheet.TimesheetStatus.CONFIRMED);
         timesheet.setConfirmedBy(confirmedBy);
         timesheet.setConfirmedAt(LocalDateTime.now());
-
         timesheetRepository.save(timesheet);
-    }
-
-    public List<Timesheet> getTimesheetsByEmployee(Employee employee) {
-        return timesheetRepository.findByEmployee(employee);
-    }
-
-    public List<Timesheet> getAllTimesheets() {
-        return timesheetRepository.findAll();
-    }
-
-    public void deleteTimesheetEntries(Timesheet timesheet) {
-        timesheetEntryRepository.deleteByTimesheet(timesheet);
-    }
-
-    public void deleteTimesheet(Integer timesheetId) {
-        timesheetRepository.deleteById(timesheetId);
     }
 
     public Long getConfirmedTimesheetsCount(Integer month, Integer year) {
@@ -153,80 +156,35 @@ public class TimesheetService {
         return timesheetRepository.findByStatus(status);
     }
 
-    @Transactional
-    public void saveTimesheetEntries(Integer timesheetId, Map<String, String> dayEntries) {
-        System.out.println("Сохранение табеля " + timesheetId + ", записей: " + dayEntries.size());
-
-        Timesheet timesheet = timesheetRepository.findById(timesheetId)
-                .orElseThrow(() -> new RuntimeException("Табель не найден"));
-
+    public void deleteTimesheetEntries(Timesheet timesheet) {
         timesheetEntryRepository.deleteByTimesheet(timesheet);
-        System.out.println("Старые записи удалены");
+    }
 
-        int savedCount = 0;
-        for (Map.Entry<String, String> entry : dayEntries.entrySet()) {
-            if (entry.getKey().startsWith("day_")) {
-                String dayStr = entry.getKey().substring(4);
-                LocalDate date = LocalDate.parse(dayStr);
-                String value = entry.getValue();
+    public void deleteTimesheet(Integer timesheetId) {
+        timesheetRepository.deleteById(timesheetId);
+    }
 
-                System.out.println("Обработка дня " + date + ": " + value);
+    private void updateTotalHours(Timesheet timesheet) {
+        List<TimesheetEntry> entries = timesheetEntryRepository.findByTimesheet(timesheet);
+        BigDecimal total = entries.stream()
+                .map(TimesheetEntry::getHoursWorked)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                if (value != null && !value.trim().isEmpty() && !value.equals("_")) {
-                    try {
-                        String[] parts = value.split("_");
-                        if (parts.length == 2) {
-                            String markTypeCode = parts[0];
-                            BigDecimal hours = new BigDecimal(parts[1]);
+        timesheet.setTotalHours(total);
+        timesheetRepository.save(timesheet);
+    }
 
-                            MarkType markType = markTypeService.getMarkTypeByCode(markTypeCode)
-                                    .orElseGet(() -> getDefaultMarkType());
+    private List<LocalDate> getDaysInMonth(int year, int month) {
+        List<LocalDate> days = new ArrayList<>();
+        LocalDate firstDay = LocalDate.of(year, month, 1);
+        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
 
-                            TimesheetEntry timesheetEntry = new TimesheetEntry();
-                            timesheetEntry.setTimesheet(timesheet);
-                            timesheetEntry.setDate(date);
-                            timesheetEntry.setMarkType(markType);
-                            timesheetEntry.setHoursWorked(hours);
-
-                            timesheetEntryRepository.save(timesheetEntry);
-                            savedCount++;
-                            System.out.println("Сохранена запись: " + date + " - " + markTypeCode + " - " + hours);
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Ошибка при сохранении записи для дня " + date + ": " + e.getMessage());
-                    }
-                }
-            }
+        LocalDate currentDay = firstDay;
+        while (!currentDay.isAfter(lastDay)) {
+            days.add(currentDay);
+            currentDay = currentDay.plusDays(1);
         }
 
-        updateTotalHours(timesheet);
-        System.out.println("Сохранено записей: " + savedCount + ", общее время: " + timesheet.getTotalHours());
-    }
-
-    private MarkType determineMarkType(BigDecimal hours) {
-        if (hours.compareTo(BigDecimal.ZERO) == 0) {
-            return markTypeService.getMarkTypeByCode("ОТ")
-                    .orElseGet(this::getDefaultMarkType);
-        } else if (hours.compareTo(new BigDecimal("8")) <= 0) {
-            return markTypeService.getMarkTypeByCode("Я")
-                    .orElseGet(this::getDefaultMarkType);
-        } else {
-            return markTypeService.getMarkTypeByCode("С")
-                    .orElseGet(this::getDefaultMarkType);
-        }
-    }
-
-    private MarkType getDefaultMarkType() {
-        MarkType markType = new MarkType();
-        markType.setCode("Я");
-        markType.setName("Явка");
-        return markType;
-    }
-
-    private MarkType createDefaultMarkType(String code, String name) {
-        MarkType markType = new MarkType();
-        markType.setCode(code);
-        markType.setName(name);
-        return markType;
+        return days;
     }
 }

@@ -63,7 +63,7 @@
             <div class="card text-white bg-warning">
                 <div class="card-body text-center">
                     <i class="bi bi-person-plus fs-1 mb-2"></i>
-                    <h6 class="card-title">Новых за месяц</h6>
+                    <h6 class="card-title">Новых за период</h6>
                     <h3 th:text="${newEmployees}">0</h3>
                 </div>
             </div>
@@ -113,12 +113,16 @@
                     </div>
                     <div class="progress mt-3" style="height: 25px;">
                         <div class="progress-bar bg-success"
-                             th:styleappend="'width: ' + ${timesheetsConfirmed * 100 / totalEmployees} + '%;'"
-                             th:text="${timesheetsConfirmed * 100 / totalEmployees} + '%'">
+                             th:styleappend="'width: ' + ${confirmedPercent} + '%;'"
+                             th:text="${#numbers.formatDecimal(confirmedPercent, 1, 1)} + '%'">
                         </div>
                         <div class="progress-bar bg-warning"
-                             th:styleappend="'width: ' + ${timesheetsPending * 100 / totalEmployees} + '%;'"
-                             th:text="${timesheetsPending * 100 / totalEmployees} + '%'">
+                             th:styleappend="'width: ' + ${pendingPercent} + '%;'"
+                             th:text="${#numbers.formatDecimal(pendingPercent, 1, 1)} + '%'">
+                        </div>
+                        <div class="progress-bar bg-danger"
+                             th:styleappend="'width: ' + ${notFilledPercent} + '%;'"
+                             th:text="${#numbers.formatDecimal(notFilledPercent, 1, 1)} + '%'">
                         </div>
                     </div>
                 </div>

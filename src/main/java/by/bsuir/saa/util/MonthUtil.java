@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Month;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Component
@@ -32,5 +33,22 @@ public class MonthUtil {
 
     public static String getRussianMonthName(Month month) {
         return getRussianMonthName(month.getValue());
+    }
+
+    public static Map<Integer, String> getRussianMonthsMap() {
+        Map<Integer, String> months = new LinkedHashMap<>();
+        months.put(1, "Январь");
+        months.put(2, "Февраль");
+        months.put(3, "Март");
+        months.put(4, "Апрель");
+        months.put(5, "Май");
+        months.put(6, "Июнь");
+        months.put(7, "Июль");
+        months.put(8, "Август");
+        months.put(9, "Сентябрь");
+        months.put(10, "Октябрь");
+        months.put(11, "Ноябрь");
+        months.put(12, "Декабрь");
+        return months;
     }
 }

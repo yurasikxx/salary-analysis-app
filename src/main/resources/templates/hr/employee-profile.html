@@ -2,7 +2,38 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Профиль сотрудника - HR</title>
+    <title>Профиль сотрудника - Специалист по кадрам</title>
+    <style>
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -2rem;
+            top: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .timeline-content {
+            padding-bottom: 1rem;
+            border-left: 2px solid #e9ecef;
+            padding-left: 1rem;
+        }
+
+        .timeline-item:last-child .timeline-content {
+            border-left: none;
+        }
+    </style>
 </head>
 <body th:replace="~{layout :: html(
     title='Профиль сотрудника',
@@ -119,27 +150,56 @@
                 <div class="card-header">
                     <h5 class="mb-0">Действия</h5>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a th:href="@{/hr/timesheets(employeeId=${employee.id})}" class="btn btn-outline-info mb-2">
-                            <i class="bi bi-calendar-check"></i> Просмотреть табели
+                <div class="d-grid gap-2">
+                    <a th:href="@{/hr/timesheets(employeeId=${employee.id})}" class="btn btn-outline-info">
+                        <i class="bi bi-calendar-check"></i> Просмотреть табели
+                    </a>
+
+                    <div class="btn-group w-100">
+                        <a th:if="${employee.terminationDate == null}"
+                           th:href="@{/hr/employees/{id}/edit(id=${employee.id})}"
+                           class="btn btn-outline-warning"
+                           title="Редактировать данные">
+                            <i class="bi bi-pencil"></i> Редактировать
                         </a>
-                        <button th:if="${employee.terminationDate == null}"
-                                class="btn btn-outline-warning mb-2"
-                                disabled>
-                            <i class="bi bi-pencil"></i> Редактировать данные
-                        </button>
-                        <button th:if="${employee.terminationDate == null}"
-                                class="btn btn-outline-danger"
-                                data-bs-toggle="modal"
-                                data-bs-target="#terminateModal">
-                            <i class="bi bi-person-x"></i> Уволить сотрудника
-                        </button>
-                        <button th:unless="${employee.terminationDate == null}"
-                                class="btn btn-outline-success"
-                                disabled>
-                            <i class="bi bi-person-check"></i> Восстановить
-                        </button>
+
+                        <form th:if="${employee.terminationDate == null}"
+                              th:action="@{/hr/employees/{id}/terminate(id=${employee.id})}"
+                              method="post"
+                              class="d-inline flex-fill">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <input type="hidden" name="terminationDate"
+                                   th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"/>
+                            <button type="submit"
+                                    class="btn btn-outline-danger w-100 terminate-btn"
+                                    th:attr="data-employee-name=${employee.fullName}">
+                                <i class="bi bi-person-x"></i> Уволить
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="btn-group w-100" th:if="${employee.terminationDate != null}">
+                        <form th:action="@{/hr/employees/{id}/restore(id=${employee.id})}"
+                              method="post"
+                              class="d-inline flex-fill">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit"
+                                    class="btn btn-outline-success w-100 restore-btn"
+                                    th:attr="data-employee-name=${employee.fullName}">
+                                <i class="bi bi-person-check"></i> Восстановить
+                            </button>
+                        </form>
+
+                        <form th:action="@{/hr/employees/{id}/delete(id=${employee.id})}"
+                              method="post"
+                              class="d-inline flex-fill">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit"
+                                    class="btn btn-outline-dark w-100 delete-btn"
+                                    th:attr="data-employee-name=${employee.fullName}">
+                                <i class="bi bi-trash"></i> Удалить
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -190,39 +250,37 @@
         </div>
     </div>
 </div>
-
 <div id="scripts">
-    <style>
-        .timeline {
-            position: relative;
-            padding-left: 2rem;
-        }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.terminate-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('Уволить сотрудника ' + employeeName + '?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
 
-        .timeline-item {
-            position: relative;
-            margin-bottom: 1.5rem;
-        }
+            document.querySelectorAll('.restore-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('Восстановить сотрудника ' + employeeName + '?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
 
-        .timeline-marker {
-            position: absolute;
-            left: -2rem;
-            top: 0.25rem;
-            width: 1rem;
-            height: 1rem;
-            border-radius: 50%;
-            border: 2px solid #fff;
-        }
-
-        .timeline-content {
-            padding-bottom: 1rem;
-            border-left: 2px solid #e9ecef;
-            padding-left: 1rem;
-        }
-
-        .timeline-item:last-child .timeline-content {
-            border-left: none;
-        }
-    </style>
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('ВНИМАНИЕ! Удалить сотрудника ' + employeeName + ' из базы данных? Это действие нельзя отменить.')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
 </div>
 </body>
 </html>

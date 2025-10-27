@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Управление сотрудниками - HR</title>
+    <title>Управление сотрудниками - Специалист по кадрам</title>
 </head>
 <body th:replace="~{layout :: html(
     title='Управление сотрудниками',
@@ -34,61 +34,37 @@
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Всего сотрудников</h6>
-                            <h3 th:text="${#lists.size(employees)}">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-people fs-1"></i>
-                        </div>
-                    </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего сотрудников</h6>
+                    <h3 th:text="${#lists.size(employees)}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Активных</h6>
-                            <h3 th:text="${activeCount}">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-person-check fs-1"></i>
-                        </div>
-                    </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-person-check fs-1 mb-2"></i>
+                    <h6 class="card-title">Активных</h6>
+                    <h3 th:text="${activeCount}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-white bg-secondary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Уволенных</h6>
-                            <h3 th:text="${terminatedCount}">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-person-x fs-1"></i>
-                        </div>
-                    </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-person-x fs-1 mb-2"></i>
+                    <h6 class="card-title">Уволенных</h6>
+                    <h3 th:text="${terminatedCount}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Отделов</h6>
-                            <h3 th:text="${departmentCount}">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-building fs-1"></i>
-                        </div>
-                    </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-building fs-1 mb-2"></i>
+                    <h6 class="card-title">Отделов</h6>
+                    <h3 th:text="${departmentCount}">0</h3>
                 </div>
             </div>
         </div>
@@ -127,20 +103,60 @@
                                   class="badge bg-secondary">Уволен</span>
                         </td>
                         <td>
-                            <div class="btn-group btn-group-sm">
+                            <div class="btn-group btn-group-sm" style="min-width: 140px;">
                                 <a th:href="@{/hr/employees/{id}(id=${employee.id})}"
                                    class="btn btn-outline-primary"
-                                   title="Просмотр">
+                                   title="Просмотр профиля">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <button th:if="${employee.terminationDate == null}"
-                                        class="btn btn-outline-danger"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#terminateModal"
-                                        th:attr="data-bs-employee-id=${employee.id},
-                                                 data-bs-employee-name=${employee.fullName}">
-                                    <i class="bi bi-person-x"></i>
-                                </button>
+
+                                <a th:if="${employee.terminationDate == null}"
+                                   th:href="@{/hr/employees/{id}/edit(id=${employee.id})}"
+                                   class="btn btn-outline-warning"
+                                   title="Редактировать данные">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+
+                                <form th:if="${employee.terminationDate == null}"
+                                      th:action="@{/hr/employees/{id}/terminate(id=${employee.id})}"
+                                      method="post"
+                                      style="display: inline;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <input type="hidden" name="terminationDate"
+                                           th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-danger terminate-btn"
+                                            th:attr="data-employee-name=${employee.fullName}"
+                                            title="Уволить сотрудника">
+                                        <i class="bi bi-person-x"></i>
+                                    </button>
+                                </form>
+
+                                <form th:if="${employee.terminationDate != null}"
+                                      th:action="@{/hr/employees/{id}/restore(id=${employee.id})}"
+                                      method="post"
+                                      style="display: inline;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-success restore-btn"
+                                            th:attr="data-employee-name=${employee.fullName}"
+                                            title="Восстановить сотрудника">
+                                        <i class="bi bi-person-check"></i>
+                                    </button>
+                                </form>
+
+                                <form th:if="${employee.terminationDate != null}"
+                                      th:action="@{/hr/employees/{id}/delete(id=${employee.id})}"
+                                      method="post"
+                                      style="display: inline;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-dark delete-btn"
+                                            th:attr="data-employee-name=${employee.fullName}"
+                                            title="Удалить из базы данных">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -196,6 +212,35 @@
                 document.getElementById('terminateForm').action = '/hr/employees/' + employeeId + '/terminate';
             });
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.terminate-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('Уволить сотрудника ' + employeeName + '?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.restore-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('Восстановить сотрудника ' + employeeName + '?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('ВНИМАНИЕ! Удалить сотрудника ' + employeeName + ' из базы данных? Это действие нельзя отменить.')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
     </script>
 </div>
 </body>

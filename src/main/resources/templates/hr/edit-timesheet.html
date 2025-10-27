@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Редактирование табеля - HR</title>
+    <title>Редактирование табеля - Специалист по кадрам</title>
 </head>
 <body th:replace="~{layout :: html(
     title='Редактирование табеля',
@@ -16,6 +16,22 @@
     <a th:href="@{/hr/timesheets(month=${timesheet.month}, year=${timesheet.year})}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Назад к списку
     </a>
+
+    <form th:action="@{/hr/timesheets/{id}/fill-full-month(id=${timesheet.id})}" method="post" class="d-inline ms-2">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn btn-outline-info">
+            <i class="bi bi-calendar-check"></i> Заполнить полный месяц
+        </button>
+    </form>
+
+    <form th:action="@{/hr/timesheets/{id}/confirm(id=${timesheet.id})}" method="post" class="d-inline ms-2">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn btn-primary"
+                onclick="return confirm('Вы уверены, что хотите подтвердить табель? После подтверждения редактирование будет невозможно.')">
+            <i class="bi bi-shield-check"></i> Подтвердить табель
+        </button>
+    </form>
+
     <button th:if="${timesheet.status.name() != 'CONFIRMED'}" type="submit" form="timesheetForm"
             class="btn btn-success ms-2">
         <i class="bi bi-check-lg"></i> Сохранить
@@ -78,7 +94,7 @@
                         </tr>
                         <tr>
                             <td class="fw-bold">Отработано часов:</td>
-                            <td class="h5" th:text="${timesheet.totalHours + ' ч.'}"></td>
+                            <td class="h5 text-primary" th:text="${timesheet.totalHours + ' ч.'}"></td>
                         </tr>
                     </table>
                 </div>
@@ -102,7 +118,7 @@
                         <tr>
                             <th>Дата</th>
                             <th>День недели</th>
-                            <th>Тип дня</th>
+                            <th>Тип отметки</th>
                             <th>Отработано часов</th>
                             <th>Примечание</th>
                         </tr>
@@ -111,47 +127,42 @@
                         <tr th:each="day : ${monthDays}">
                             <td th:text="${#temporals.format(day, 'dd.MM.yyyy')}"></td>
                             <td>
-                                <span th:switch="${#temporals.dayOfWeek(day)}">
-                                    <span th:case="1" class="fw-bold text-primary">Понедельник</span>
-                                    <span th:case="2" class="fw-bold">Вторник</span>
-                                    <span th:case="3" class="fw-bold">Среда</span>
-                                    <span th:case="4" class="fw-bold">Четверг</span>
-                                    <span th:case="5" class="fw-bold">Пятница</span>
-                                    <span th:case="6" class="fw-bold text-warning">Суббота</span>
-                                    <span th:case="7" class="fw-bold text-danger">Воскресенье</span>
-                                </span>
+                                    <span th:switch="${#temporals.dayOfWeek(day)}">
+                                        <span th:case="1">Понедельник</span>
+                                        <span th:case="2">Вторник</span>
+                                        <span th:case="3">Среда</span>
+                                        <span th:case="4">Четверг</span>
+                                        <span th:case="5">Пятница</span>
+                                        <span th:case="6" class="text-warning">Суббота</span>
+                                        <span th:case="7" class="text-danger">Воскресенье</span>
+                                    </span>
                             </td>
                             <td>
-                                <select th:name="'day_' + ${#temporals.format(day, 'yyyy-MM-dd')}"
+                                <select th:name="'markType_' + ${#temporals.format(day, 'yyyy-MM-dd')}"
                                         th:disabled="${timesheet.status.name() == 'CONFIRMED'}"
                                         class="form-select form-select-sm mark-type-select">
                                     <option value="">-- Выберите --</option>
                                     <option th:each="markType : ${markTypes}"
-                                            th:value="${markType.code + '_8'}"
-                                            th:selected="${entriesMap[day]?.markType?.code == markType.code}"
+                                            th:value="${markType.code}"
+                                            th:selected="${entriesMap[#temporals.format(day, 'yyyy-MM-dd')]?.markType?.code == markType.code}"
                                             th:text="${markType.name}">
                                     </option>
                                 </select>
-
-                                <div th:if="${entriesMap[day]}" class="small text-muted">
-                                    В базе: <span th:text="${entriesMap[day].markType.code}"></span> -
-                                    <span th:text="${entriesMap[day].hoursWorked}"></span>ч.
-                                </div>
                             </td>
                             <td>
                                 <input type="number" step="0.5" min="0" max="24"
                                        th:name="'hours_' + ${#temporals.format(day, 'yyyy-MM-dd')}"
                                        th:disabled="${timesheet.status.name() == 'CONFIRMED'}"
-                                       th:value="${entriesMap[day]?.hoursWorked ?: 0}"
+                                       th:value="${entriesMap[#temporals.format(day, 'yyyy-MM-dd')]?.hoursWorked ?: 0}"
                                        class="form-control form-control-sm hours-input">
                             </td>
                             <td class="small text-muted">
-                                <span th:if="${#temporals.dayOfWeek(day) >= 6}" class="text-danger">
-                                    Выходной день
-                                </span>
+                                    <span th:if="${#temporals.dayOfWeek(day) >= 6}" class="text-danger">
+                                        Выходной день
+                                    </span>
                                 <span th:unless="${#temporals.dayOfWeek(day) >= 6}">
-                                    Рабочий день
-                                </span>
+                                        Рабочий день
+                                    </span>
                             </td>
                         </tr>
                         </tbody>
@@ -161,28 +172,28 @@
                 <div th:if="${timesheet.status.name() != 'CONFIRMED'}" class="mt-3">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title">Справка по типам дней:</h6>
-                                    <ul class="small mb-0">
-                                        <li th:each="markType : ${markTypes}">
-                                            <strong th:text="${markType.code}"></strong>:
-                                            <span th:text="${markType.name}"></span>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success">
+                                <button type="submit" form="timesheetForm" class="btn btn-success">
                                     <i class="bi bi-check-lg"></i> Сохранить изменения
                                 </button>
-                                <a th:href="@{/hr/timesheets/{id}/confirm(id=${timesheet.id})}"
-                                   class="btn btn-primary"
-                                   onclick="return confirm('Вы уверены, что хотите подтвердить табель? После подтверждения редактирование будет невозможно.')">
-                                    <i class="bi bi-shield-check"></i> Подтвердить табель
-                                </a>
+
+                                <form th:action="@{/hr/timesheets/{id}/fill-full-month(id=${timesheet.id})}"
+                                      method="post" class="d-inline">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-outline-info w-100"
+                                            onclick="return confirm('Заполнить табель по полному рабочему месяцу? Все текущие данные будут перезаписаны.')">
+                                        <i class="bi bi-calendar-check"></i> Заполнить полный месяц
+                                    </button>
+                                </form>
+
+                                <form th:action="@{/hr/timesheets/{id}/confirm(id=${timesheet.id})}" method="post"
+                                      class="d-inline">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-primary w-100"
+                                            onclick="return confirm('Вы уверены, что хотите подтвердить табель? После подтверждения редактирование будет невозможно.')">
+                                        <i class="bi bi-shield-check"></i> Подтвердить табель
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -194,27 +205,17 @@
 
 <div id="scripts">
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const markTypeSelects = document.querySelectorAll('.mark-type-select');
             markTypeSelects.forEach(select => {
-                select.addEventListener('change', function() {
+                select.addEventListener('change', function () {
                     const row = this.closest('tr');
                     const hoursInput = row.querySelector('.hours-input');
-                    if (this.value && this.value.includes('_')) {
-                        const hours = this.value.split('_')[1];
-                        hoursInput.value = hours;
-                    }
-                    updateTotalHours();
-                });
-            });
 
-            const hoursInputs = document.querySelectorAll('.hours-input');
-            hoursInputs.forEach(input => {
-                input.addEventListener('input', function() {
-                    const row = this.closest('tr');
-                    const markTypeSelect = row.querySelector('.mark-type-select');
-                    if (this.value > 0 && markTypeSelect.value === '') {
-                        markTypeSelect.value = 'Я_8';
+                    if (this.value === 'В' || this.value === 'О' || this.value === 'Б' || this.value === 'ОТ') {
+                        hoursInput.value = '0';
+                    } else if (this.value === 'Я') {
+                        hoursInput.value = '8';
                     }
                     updateTotalHours();
                 });
@@ -224,8 +225,7 @@
                 const inputs = document.querySelectorAll('.hours-input');
                 let total = 0;
                 inputs.forEach(input => {
-                    const value = parseFloat(input.value) || 0;
-                    total += value;
+                    total += parseFloat(input.value) || 0;
                 });
 
                 const totalDisplay = document.querySelector('.h5');
@@ -233,6 +233,11 @@
                     totalDisplay.textContent = total.toFixed(1) + ' ч.';
                 }
             }
+
+            const hoursInputs = document.querySelectorAll('.hours-input');
+            hoursInputs.forEach(input => {
+                input.addEventListener('input', updateTotalHours);
+            });
 
             updateTotalHours();
         });
