@@ -212,10 +212,10 @@
                     const row = this.closest('tr');
                     const hoursInput = row.querySelector('.hours-input');
 
-                    if (this.value === 'В' || this.value === 'О' || this.value === 'Б' || this.value === 'ОТ') {
-                        hoursInput.value = '0';
-                    } else if (this.value === 'Я') {
+                    if (this.value === 'Я' || this.value === 'С' || this.value === 'ОТ') {
                         hoursInput.value = '8';
+                    } else {
+                        hoursInput.value = '0';
                     }
                     updateTotalHours();
                 });

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
@@ -34,39 +34,69 @@ public class DepartmentService {
         return departmentRepository.findByName(name);
     }
 
-    @Transactional
+    public boolean departmentExists(String name) {
+        return departmentRepository.existsByName(name);
+    }
+
     public Department createDepartment(String name) {
-        if (departmentRepository.existsByName(name)) {
-            throw new RuntimeException("Отдел с таким названием уже существует: " + name);
-        }
+        validateName(name);
+        String trimmedName = name.trim();
 
-        Department department = new Department();
-        department.setName(name);
+        validateUniqueName(trimmedName);
 
+        Department department = buildDepartment(trimmedName);
         return departmentRepository.save(department);
     }
 
-    @Transactional
     public Department updateDepartment(Integer id, String name) {
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Отдел не найден"));
+        Department department = getExistingDepartment(id);
+        validateName(name);
 
-        if (!department.getName().equals(name) && departmentRepository.existsByName(name)) {
-            throw new RuntimeException("Отдел с таким названием уже существует: " + name);
-        }
+        String trimmedName = name.trim();
+        validateUniqueNameForUpdate(department, trimmedName);
 
-        department.setName(name);
+        department.setName(trimmedName);
         return departmentRepository.save(department);
     }
 
-    @Transactional
     public void deleteDepartment(Integer id) {
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Отдел не найден"));
+        Department department = getExistingDepartment(id);
+        validateNoRelatedEmployees(department);
         departmentRepository.delete(department);
     }
 
-    public long getEmployeeCountByDepartment(Integer departmentId) {
-        return employeeRepository.countByDepartmentId(departmentId);
+    private void validateName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new RuntimeException("Название подразделения не может быть пустым");
+        }
+    }
+
+    private void validateUniqueName(String name) {
+        if (departmentRepository.existsByName(name)) {
+            throw new RuntimeException("Подразделение с названием '" + name + "' уже существует");
+        }
+    }
+
+    private void validateUniqueNameForUpdate(Department department, String newName) {
+        if (!department.getName().equals(newName) && departmentRepository.existsByName(newName)) {
+            throw new RuntimeException("Подразделение с названием '" + newName + "' уже существует");
+        }
+    }
+
+    private void validateNoRelatedEmployees(Department department) {
+        if (employeeRepository.existsByDepartment(department)) {
+            throw new RuntimeException("Невозможно удалить подразделение. Существуют связанные сотрудники.");
+        }
+    }
+
+    private Department getExistingDepartment(Integer id) {
+        return departmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Подразделение не найдено"));
+    }
+
+    private Department buildDepartment(String name) {
+        Department department = new Department();
+        department.setName(name);
+        return department;
     }
 }

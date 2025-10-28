@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавить надбавку - Нормировщик труда</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Добавить надбавку',
+    icon='bi-plus-circle',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <a th:href="@{/ratesetter/bonuses(month=${month}, year=${year})}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-award"></i> Добавление надбавки сотруднику
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/ratesetter/bonuses}" method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="paymentTypeId" class="form-label">Вид надбавки *</label>
+                                    <select class="form-select" id="paymentTypeId" name="paymentTypeId" required>
+                                        <option value="">Выберите вид надбавки</option>
+                                        <option th:each="type : ${bonusTypes}"
+                                                th:value="${type.id}"
+                                                th:text="${type.name + ' (' + type.code + ')'}">
+                                        </option>
+                                    </select>
+                                    <div class="form-text">Выберите тип начисления из списка</div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="amount" class="form-label">Сумма *</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="amount" name="amount"
+                                               required min="0" step="0.01" placeholder="500.00">
+                                        <span class="input-group-text">руб.</span>
+                                    </div>
+                                    <div class="form-text">Сумма надбавки в рублях</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание (необязательно)</label>
+                            <textarea class="form-control" id="description" name="description"
+                                      rows="3" maxlength="500"
+                                      placeholder="Основание для начисления надбавки..."></textarea>
+                            <div class="form-text">Максимум 500 символов</div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Начислить надбавку
+                                    </button>
+                                    <a th:href="@{/ratesetter/bonuses(month=${month}, year=${year})}"
+                                       class="btn btn-secondary me-md-2">
+                                        <i class="bi bi-x-circle"></i> Отмена
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+            const amountInput = document.getElementById('amount');
+
+            amountInput.addEventListener('blur', function () {
+                if (this.value) {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+
+            form.addEventListener('submit', function (e) {
+                const amount = parseFloat(amountInput.value);
+
+                if (isNaN(amount) || amount <= 0) {
+                    alert('Сумма должна быть положительным числом');
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

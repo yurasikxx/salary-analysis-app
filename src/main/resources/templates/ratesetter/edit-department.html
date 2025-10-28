@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование подразделения - Нормировщик труда</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Редактирование подразделения',
+    icon='bi-pencil',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <a th:href="@{/ratesetter/departments}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building"></i> Редактирование подразделения
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/ratesetter/departments/{id}(id=${department.id})}" method="post">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Название подразделения *</label>
+                                    <input type="text" class="form-control" id="name" name="name"
+                                           th:value="${name != null} ? ${name} : ${department.name}"
+                                           required maxlength="100"
+                                           placeholder="Например: Отдел информационных технологий"
+                                           th:classappend="${nameError != null} ? 'is-invalid'">
+                                    <div th:if="${nameError}" class="invalid-feedback" th:text="${nameError}"></div>
+                                    <div class="form-text">Уникальное название подразделения организации</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a th:href="@{/ratesetter/departments}" class="btn btn-secondary me-md-2">
+                                        <i class="bi bi-x-circle"></i> Отмена
+                                    </a>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Сохранить изменения
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const nameInput = document.getElementById('name');
+
+            nameInput.addEventListener('blur', function () {
+                if (this.value.trim().length > 0) {
+                    this.value = this.value.trim().replace(/^\w/, function (c) {
+                        return c.toUpperCase();
+                    });
+                }
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

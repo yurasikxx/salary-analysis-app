@@ -7,17 +7,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface TimesheetEntryRepository extends JpaRepository<TimesheetEntry, Integer> {
 
     List<TimesheetEntry> findByTimesheet(Timesheet timesheet);
-
-
-    Optional<TimesheetEntry> findByTimesheetAndDate(Timesheet timesheet, LocalDate date);
 
     void deleteByTimesheet(Timesheet timesheet);
 

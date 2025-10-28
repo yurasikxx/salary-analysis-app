@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,6 +19,10 @@ public class PaymentService {
 
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
+    }
+
+    public Optional<Payment> getPaymentById(Integer id) {
+        return paymentRepository.findById(id);
     }
 
     public List<Payment> getPaymentsByPeriod(Integer month, Integer year) {
@@ -57,6 +62,10 @@ public class PaymentService {
                 .abs();
     }
 
+    public Long getEmployeesWithCalculationsCount(Integer month, Integer year) {
+        return paymentRepository.countDistinctEmployeesByMonthAndYear(month, year);
+    }
+
     public Payment createPayment(Employee employee, Integer month, Integer year,
                                  PaymentType paymentType, BigDecimal amount, String description) {
         Payment payment = new Payment();
@@ -72,9 +81,5 @@ public class PaymentService {
 
     public void deletePayment(Integer paymentId) {
         paymentRepository.deleteById(paymentId);
-    }
-
-    public Long getEmployeesWithCalculationsCount(Integer month, Integer year) {
-        return paymentRepository.countDistinctEmployeesByMonthAndYear(month, year);
     }
 }

@@ -15,4 +15,6 @@ public interface PaymentTypeRepository extends JpaRepository<PaymentType, Intege
     List<PaymentType> findByCategory(String category);
 
     List<PaymentType> findByCategoryIn(List<String> categories);
+
+    boolean existsByCode(String code);
 }

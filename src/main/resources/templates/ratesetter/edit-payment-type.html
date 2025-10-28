@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование вида оплаты - Нормировщик труда</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Редактирование вида оплаты',
+    icon='bi-pencil',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <a th:href="@{/ratesetter/payment-types}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cash-coin"></i> Редактирование вида оплаты
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/ratesetter/payment-types/{id}(id=${paymentType.id})}" method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="code" class="form-label">Код *</label>
+                                    <input type="text" class="form-control" id="code" name="code"
+                                           th:value="${code != null} ? ${code} : ${paymentType.code}"
+                                           required maxlength="20" placeholder="Например: ПРЕД"
+                                           th:classappend="${codeError != null} ? 'is-invalid'">
+                                    <div th:if="${codeError}" class="invalid-feedback" th:text="${codeError}"></div>
+                                    <div class="form-text">Уникальный код вида оплаты (только заглавные кириллические
+                                        буквы)
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Наименование *</label>
+                                    <input type="text" class="form-control" id="name" name="name"
+                                           th:value="${name != null} ? ${name} : ${paymentType.name}"
+                                           required maxlength="100" placeholder="Например: Премия по предприятию"
+                                           th:classappend="${nameError != null} ? 'is-invalid'">
+                                    <div th:if="${nameError}" class="invalid-feedback" th:text="${nameError}"></div>
+                                    <div class="form-text">Полное название вида оплаты</div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="category" class="form-label">Категория *</label>
+                                    <select class="form-select" id="category" name="category" required
+                                            th:classappend="${categoryError != null} ? 'is-invalid'">
+                                        <option value="">Выберите категорию</option>
+                                        <option value="accrual"
+                                                th:selected="${(category != null ? category : paymentType.category) == 'accrual'}">
+                                            Начисление
+                                        </option>
+                                        <option value="deduction"
+                                                th:selected="${(category != null ? category : paymentType.category) == 'deduction'}">
+                                            Удержание
+                                        </option>
+                                    </select>
+                                    <div th:if="${categoryError}" class="invalid-feedback"
+                                         th:text="${categoryError}"></div>
+                                    <div class="form-text">Начисление - добавляет сумму, Удержание - вычитает</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="formula" class="form-label">Формула (необязательно)</label>
+                                    <input type="text" class="form-control" id="formula" name="formula"
+                                           th:value="${formula != null} ? ${formula} : ${paymentType.formula}"
+                                           maxlength="200" placeholder="Например: Оклад * 0.25">
+                                    <div class="form-text">Формула для автоматического расчета</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание (необязательно)</label>
+                            <textarea class="form-control" id="description" name="description"
+                                      rows="3" maxlength="500"
+                                      placeholder="Подробное описание вида оплаты..."
+                                      th:text="${description != null} ? ${description} : ${paymentType.description}"></textarea>
+                            <div class="form-text">Максимум 500 символов</div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Сохранить изменения
+                                    </button>
+                                    <a th:href="@{/ratesetter/payment-types}" class="btn btn-secondary me-md-2">
+                                        <i class="bi bi-x-circle"></i> Отмена
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const codeInput = document.getElementById('code');
+
+            codeInput.addEventListener('input', function () {
+                this.value = this.value.toUpperCase();
+                this.value = this.value.replace(/[^А-ЯЁ]/g, '');
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

@@ -17,14 +17,17 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
 
     List<Payment> findByEmployeeAndMonthAndYear(Employee employee, Integer month, Integer year);
 
-    Optional<Payment> findByEmployeeAndMonthAndYearAndPaymentType(Employee employee,
-                                                                  Integer month,
-                                                                  Integer year,
-                                                                  PaymentType paymentType);
-
     List<Payment> findByPaymentType(PaymentType paymentType);
 
     List<Payment> findByMonthAndYear(Integer month, Integer year);
+
+    boolean existsByPaymentType(PaymentType paymentType);
+
+    @Query("SELECT p FROM Payment p WHERE p.employee = :employee AND p.month = :month AND p.year = :year AND p.paymentType = :paymentType")
+    Optional<Payment> findByEmployeeAndMonthAndYearAndPaymentType(@Param("employee") Employee employee,
+                                                                  @Param("month") Integer month,
+                                                                  @Param("year") Integer year,
+                                                                  @Param("paymentType") PaymentType paymentType);
 
     @Query("SELECT p FROM Payment p WHERE p.employee.department.id = :departmentId AND p.month = :month AND p.year = :year AND p.paymentType.category = :category")
     List<Payment> findByDepartmentAndPeriodAndCategory(@Param("departmentId") Integer departmentId,

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Расчет зарплаты - Нормировщик труда</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Расчет основной заработной платы',
+    icon='bi-calculator',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <form th:action="@{/ratesetter/salary-calculation/calculate-batch}" method="post" class="d-inline me-2">
+        <input type="hidden" name="month" th:value="${month}">
+        <input type="hidden" name="year" th:value="${year}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn btn-success"
+                onclick="return confirm('Рассчитать основную зарплату для ВСЕХ сотрудников с подтвержденными табелями за ' +
+                         document.querySelector('select[name=month]').options[document.querySelector('select[name=month]').selectedIndex].text + ' ' +
+                         document.querySelector('select[name=year]').options[document.querySelector('select[name=year]').selectedIndex].text + '?')">
+            <i class="bi bi-calculator"></i> Рассчитать всё
+        </button>
+    </form>
+</div>
+
+<div id="content">
+    <!-- Информация о периоде -->
+    <div class="card bg-light mb-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h4 th:text="${russianMonth + ' ' + year}"></h4>
+                    <small class="text-muted">Расчетный период</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 th:text="${workingDays}"></h4>
+                    <small class="text-muted">Рабочих дней</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 th:text="${standardHours}"></h4>
+                    <small class="text-muted">Норма часов</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 th:text="${standardHours / 8}"></h4>
+                    <small class="text-muted">Рабочих дней × 8ч</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/ratesetter/salary-calculation}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="monthEntry : ${@monthUtil.getRussianMonthsMap()}"
+                                th:value="${monthEntry.key}"
+                                th:selected="${month == monthEntry.key}"
+                                th:text="${monthEntry.value}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option th:each="y : ${#numbers.sequence(2023, 2026)}"
+                                th:value="${y}"
+                                th:selected="${year == y}"
+                                th:text="${y}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Отдел</label>
+                    <select class="form-select" name="departmentId">
+                        <option value="">Все отделы</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}"
+                                th:selected="${departmentId == dept.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего сотрудников</h6>
+                    <h3 th:text="${totalEmployees}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-check fs-1 mb-2"></i>
+                    <h6 class="card-title">С табелями</h6>
+                    <h3 th:text="${employeesWithTimesheets}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle fs-1 mb-2"></i>
+                    <h6 class="card-title">Рассчитано</h6>
+                    <h3 th:text="${employeesCalculated}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-percent fs-1 mb-2"></i>
+                    <h6 class="card-title">Прогресс</h6>
+                    <h3 th:text="${totalEmployees > 0 ? (employeesCalculated * 100 / totalEmployees) : 0} + '%'">0%</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i> Расчет основной зарплаты
+            </h5>
+            <div>
+                <span class="badge bg-info me-2" th:text="${employeesWithTimesheets} + ' с табелями'"></span>
+                <span class="badge bg-success" th:text="${employeesCalculated} + ' рассчитано'"></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>Сотрудник</th>
+                        <th>Должность</th>
+                        <th>Отдел</th>
+                        <th class="text-center">Статус табеля</th>
+                        <th class="text-end">Оклад</th>
+                        <th class="text-center">Отработано часов</th>
+                        <th class="text-center">Статус расчета</th>
+                        <th class="text-end">Расчетная сумма</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="info : ${salaryInfos}">
+                        <td>
+                            <strong th:text="${info.employee.fullName}"></strong>
+                        </td>
+                        <td th:text="${info.employee.position.title}"></td>
+                        <td th:text="${info.employee.department.name}"></td>
+                        <td class="text-center">
+                            <span th:if="${info.hasConfirmedTimesheet}" class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Подтверждён
+                            </span>
+                            <span th:unless="${info.hasConfirmedTimesheet}" class="badge bg-danger">
+                                <i class="bi bi-x-circle"></i> Нет табеля
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <span th:text="${info.employee.position.baseSalary} + ' руб.'"
+                                  class="fw-bold text-primary">
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span th:if="${info.hasConfirmedTimesheet}"
+                                  th:text="${info.actualHours} + ' ч.'"
+                                  th:class="${info.hoursMetStandard ? 'fw-bold text-success' : 'fw-bold text-warning'}"></span>
+                            <span th:unless="${info.hasConfirmedTimesheet}" class="text-muted">-</span>
+                            <br>
+                            <small th:if="${info.hasConfirmedTimesheet}"
+                                   th:text="${info.getOvertimeInfo(standardHours)}"
+                                   th:class="${info.hasOvertime(standardHours) ? 'text-success' : 'text-muted'}">
+                            </small>
+                        </td>
+                        <td class="text-center">
+                            <span th:if="${info.hasCalculation}" class="badge bg-success">
+                                <i class="bi bi-check-lg"></i> Рассчитано
+                            </span>
+                            <span th:unless="${info.hasCalculation}" class="badge bg-secondary">
+                                <i class="bi bi-clock"></i> Ожидает
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <span th:if="${info.hasCalculation && info.calculatedSalary != null}"
+                                  th:text="${info.calculatedSalary} + ' руб.'"
+                                  class="fw-bold text-success">
+                            </span>
+                            <span th:unless="${info.hasCalculation}" class="text-muted">-</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <form th:if="${info.hasConfirmedTimesheet && !info.hasCalculation}"
+                                      th:action="@{/ratesetter/salary-calculation/calculate}"
+                                      method="post"
+                                      class="d-inline">
+                                    <input type="hidden" name="employeeId" th:value="${info.employee.id}">
+                                    <input type="hidden" name="month" th:value="${month}">
+                                    <input type="hidden" name="year" th:value="${year}">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-success calculate-btn"
+                                            th:attr="data-employee-name=${info.employee.fullName}"
+                                            title="Рассчитать зарплату">
+                                        <i class="bi bi-calculator"></i> Рассчитать
+                                    </button>
+                                </form>
+                                <span th:if="${!info.hasConfirmedTimesheet}" class="text-muted small">
+                        Требуется табель
+                    </span>
+                                <span th:if="${info.hasCalculation}" class="text-success small">
+                        <i class="bi bi-check-lg"></i> Готово
+                    </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(salaryInfos)}">
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-people display-4"></i>
+                            <p class="mt-2">Сотрудники не найдены</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.calculate-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (!confirm('Рассчитать основную зарплату для сотрудника ' + employeeName + '?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

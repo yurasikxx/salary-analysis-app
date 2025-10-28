@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование должности - Нормировщик труда</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Редактирование должности',
+    icon='bi-pencil',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <a th:href="@{/ratesetter/positions}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge"></i> Редактирование должности
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/ratesetter/positions/{id}(id=${position.id})}" method="post">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Название должности *</label>
+                            <input type="text" class="form-control" id="title" name="title"
+                                   th:value="${position.title}"
+                                   required maxlength="100" placeholder="Например: Инженер-программист">
+                            <div class="form-text">Уникальное название должности</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="baseSalary" class="form-label">Базовый оклад *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="baseSalary" name="baseSalary"
+                                       th:value="${position.baseSalary}"
+                                       required min="0" step="0.01" placeholder="2000.00">
+                                <span class="input-group-text">руб.</span>
+                            </div>
+                            <div class="form-text">Месячный оклад по должности</div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a th:href="@{/ratesetter/positions}" class="btn btn-secondary me-md-2">
+                                        <i class="bi bi-x-circle"></i> Отмена
+                                    </a>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Сохранить изменения
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const salaryInput = document.getElementById('baseSalary');
+
+            salaryInput.addEventListener('blur', function () {
+                if (this.value) {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

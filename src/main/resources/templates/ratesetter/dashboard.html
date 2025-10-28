@@ -2,23 +2,24 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Дашборд нормировщика</title>
+    <title>Главная - Нормировщик труда</title>
 </head>
-<body th:replace="ratesetter/base :: html(
-    title='Дашборд нормировщика',
-    icon='bi-speedometer2',
+<body th:replace="~{layout :: html(
+    title='Главная',
+    icon='bi-gear',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
-)">
+)}">
 
 <div id="actions">
     <div class="btn-group">
+        <label for="periodSelect">Период: </label>
         <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
             <option th:each="m : ${#numbers.sequence(1,12)}"
                     th:value="${m + ',' + year}"
                     th:selected="${month == m}"
-                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM yyyy')}">
+                    th:text="${@monthUtil.getRussianMonthName(m) + ' ' + year}">
             </option>
         </select>
     </div>
@@ -29,12 +30,11 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-8">
-                    <h1 class="display-6"><i class="bi bi-calculator"></i> Дашборд нормировщика</h1>
-                    <p class="lead mb-0">Управление расчетами основной заработной платы, премий и надбавок</p>
+                    <h1 class="display-6"><i class="bi bi-gear"></i> Дашборд нормировщика труда</h1>
+                    <p class="lead mb-0">Управление справочниками, расчет зарплаты и начисление надбавок</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
-                    <p class="mb-0">Расчетный период</p>
+                    <h3 th:text="${russianMonth + ' ' + year}"></h3>
                 </div>
             </div>
         </div>
@@ -42,29 +42,29 @@
 
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card text-white bg-success">
+            <div class="card text-white bg-info">
                 <div class="card-body text-center">
-                    <i class="bi bi-people fs-1 mb-2"></i>
-                    <h6 class="card-title">Всего сотрудников</h6>
-                    <h3 th:text="${totalEmployees}">0</h3>
+                    <i class="bi bi-person-badge fs-1 mb-2"></i>
+                    <h6 class="card-title">Должностей</h6>
+                    <h3 th:text="${totalPositions}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white bg-info">
+            <div class="card text-white bg-success">
                 <div class="card-body text-center">
-                    <i class="bi bi-check-circle fs-1 mb-2"></i>
-                    <h6 class="card-title">С расчетами</h6>
-                    <h3 th:text="${employeesWithCalculations}">0</h3>
+                    <i class="bi bi-building fs-1 mb-2"></i>
+                    <h6 class="card-title">Отделов</h6>
+                    <h3 th:text="${totalDepartments}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-white bg-warning">
                 <div class="card-body text-center">
-                    <i class="bi bi-clock fs-1 mb-2"></i>
-                    <h6 class="card-title">Ожидают расчета</h6>
-                    <h3 th:text="${employeesWithoutCalculations}">0</h3>
+                    <i class="bi bi-cash-coin fs-1 mb-2"></i>
+                    <h6 class="card-title">Видов начислений</h6>
+                    <h3 th:text="${totalPaymentTypes}">0</h3>
                 </div>
             </div>
         </div>
@@ -72,58 +72,112 @@
             <div class="card text-white bg-danger">
                 <div class="card-body text-center">
                     <i class="bi bi-percent fs-1 mb-2"></i>
-                    <h6 class="card-title">Выполнено</h6>
-                    <h3 th:text="${completionRate + '%'}">0%</h3>
+                    <h6 class="card-title">Рассчитано зарплат</h6>
+                    <h3 th:text="${salaryCalculationRate + '%'}">0%</h3>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-cash-coin"></i> Финансовые показатели
+                        <i class="bi bi-speedometer2"></i> Статус расчетов заработной платы
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
-                        <div class="col-md-6">
-                            <h6>Общая сумма начислений</h6>
-                            <h3 th:text="${'₽' + #numbers.formatDecimal(totalAccruals, 1, 2)}"
-                                class="text-primary"></h3>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-check-circle text-success fs-1"></i>
+                                <h4 th:text="${employeesCalculated}">0</h4>
+                                <p class="text-muted mb-0">Зарплата рассчитана</p>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <h6>Среднее начисление</h6>
-                            <h3 th:text="${'₽' + #numbers.formatDecimal(averageAccrual, 1, 2)}"
-                                class="text-success"></h3>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-file-check text-info fs-1"></i>
+                                <h4 th:text="${employeesWithConfirmedTimesheets}">0</h4>
+                                <p class="text-muted mb-0">Табели подтверждены</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-clock text-warning fs-1"></i>
+                                <h4 th:text="${employeesWithConfirmedTimesheets - employeesCalculated}">0</h4>
+                                <p class="text-muted mb-0">Готовы к расчету</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-x-circle text-danger fs-1"></i>
+                                <h4 th:text="${totalActiveEmployees - employeesWithConfirmedTimesheets}">0</h4>
+                                <p class="text-muted mb-0">Ожидают табели</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-speedometer2"></i> Прогресс расчета
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="progress" style="height: 30px;">
-                        <div class="progress-bar bg-success"
-                             th:styleappend="'width: ' + ${completionRate} + '%;'"
-                             th:text="${completionRate} + '%'">
+
+                    <!-- Прогресс-бар статуса расчетов -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small>Прогресс расчетов заработной платы</small>
+                            <small th:text="${salaryCalculationRate + '%'}"></small>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success"
+                                 th:style="'width: ' + ${calculatedPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Зарплата рассчитана"
+                                 th:text="${calculatedPercent > 10} ? ${#numbers.formatDecimal(calculatedPercent, 1, 1) + '%'} : ''">
+                            </div>
+                            <div class="progress-bar bg-info"
+                                 th:style="'width: ' + ${readyForCalculationPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Готовы к расчету"
+                                 th:text="${readyForCalculationPercent > 10} ? ${#numbers.formatDecimal(readyForCalculationPercent, 1, 1) + '%'} : ''">
+                            </div>
+                            <div class="progress-bar bg-warning"
+                                 th:style="'width: ' + ${waitingTimesheetsPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Ожидают табели"
+                                 th:text="${waitingTimesheetsPercent > 10} ? ${#numbers.formatDecimal(waitingTimesheetsPercent, 1, 1) + '%'} : ''">
+                            </div>
                         </div>
                     </div>
-                    <div class="row mt-2 text-center">
+
+                    <!-- Детальная статистика -->
+                    <div class="row mt-4 text-center">
                         <div class="col-md-6">
-                            <small class="text-muted">Выполнено: <span
-                                    th:text="${employeesWithCalculations}"></span></small>
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary">
+                                        <i class="bi bi-calendar-check"></i> Статус табелей
+                                    </h5>
+                                    <h3 th:text="${employeesWithConfirmedTimesheets + '/' + totalActiveEmployees}">
+                                        0/0</h3>
+                                    <p class="card-text">
+                                        <span th:text="${timesheetCompletionRate}">0</span>% сотрудников с
+                                        подтвержденными табелями
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <small class="text-muted">Осталось: <span th:text="${employeesWithoutCalculations}"></span></small>
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success">
+                                        <i class="bi bi-calculator"></i> Статус расчетов
+                                    </h5>
+                                    <h3 th:text="${employeesCalculated + '/' + employeesWithConfirmedTimesheets}">
+                                        0/0</h3>
+                                    <p class="card-text">
+                                        <span th:text="${salaryCalculationRate}">0</span>% подтвержденных табелей
+                                        рассчитано
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -131,71 +185,50 @@
         </div>
     </div>
 
+    <!-- Навигационные карточки -->
     <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightning"></i> Быстрый доступ
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/ratesetter/calculations(month=${month}, year=${year})}"
-                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-calculator fs-1 mb-2"></i>
-                                <span>Расчет начислений</span>
-                            </a>
-                        </div>
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/ratesetter/reports(month=${month}, year=${year})}"
-                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-file-text fs-1 mb-2"></i>
-                                <span>Отчеты</span>
-                            </a>
-                        </div>
-                        <div class="col-md-4 text-center mb-3">
-                            <a th:href="@{/hr/employees}"
-                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-person-badge fs-1 mb-2"></i>
-                                <span>Справочник сотрудников</span>
-                            </a>
-                        </div>
-                    </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-calculator text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Расчет зарплаты</h5>
+                    <p class="card-text">Расчет основной заработной платы по подтвержденным табелям</p>
+                    <a th:href="@{/ratesetter/salary-calculation(month=${month}, year=${year})}"
+                       class="btn btn-primary">
+                        Перейти к расчету
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-clock-history"></i> Последние расчеты
-                    </h5>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-award text-success fs-1 mb-3"></i>
+                    <h5 class="card-title">Надбавки и премии</h5>
+                    <p class="card-text">Начисление дополнительных выплат и бонусов</p>
+                    <a th:href="@{/ratesetter/bonuses(month=${month}, year=${year})}"
+                       class="btn btn-success">
+                        Управление надбавками
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                            <tr>
-                                <th>Сотрудник</th>
-                                <th>Отдел</th>
-                                <th>Тип начисления</th>
-                                <th class="text-end">Сумма</th>
-                                <th>Дата</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-3">
-                                    <i class="bi bi-info-circle"></i> Интеграция с журналом расчетов в разработке
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-gear text-info fs-1 mb-3"></i>
+                    <h5 class="card-title">Справочники</h5>
+                    <p class="card-text">Управление должностями, видами оплат и подразделениями</p>
+                    <div class="btn-group-vertical w-100">
+                        <a th:href="@{/ratesetter/positions}" class="btn btn-outline-info mb-2">
+                            Должности
+                        </a>
+                        <a th:href="@{/ratesetter/payment-types}" class="btn btn-outline-info mb-2">
+                            Виды оплат
+                        </a>
+                        <a th:href="@{/ratesetter/departments}" class="btn btn-outline-info">
+                            Подразделения
+                        </a>
                     </div>
                 </div>
             </div>
@@ -211,13 +244,11 @@
             window.location.href = '/ratesetter/dashboard?month=' + month + '&year=' + year;
         }
 
+        // Инициализация tooltips
         document.addEventListener('DOMContentLoaded', function () {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
             });
         });
     </script>

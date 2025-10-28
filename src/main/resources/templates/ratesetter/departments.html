@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Подразделения - Нормировщик труда</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Управление подразделениями',
+    icon='bi-building',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <a th:href="@{/ratesetter/departments/create}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Добавить подразделение
+    </a>
+</div>
+
+<div id="content">
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-building fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего подразделений</h6>
+                    <h3 th:text="${#lists.size(departments)}">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-building"></i> Список подразделений
+                <span class="badge bg-light text-dark" th:text="${#lists.size(departments)}"></span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название подразделения</th>
+                        <th>Дата создания</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="department : ${departments}">
+                        <td>
+                            <span class="badge bg-secondary" th:text="${department.id}"></span>
+                        </td>
+                        <td>
+                            <strong th:text="${department.name}"></strong>
+                        </td>
+                        <td>
+                            <small class="text-muted"
+                                   th:text="${#temporals.format(department.createdAt, 'dd.MM.yyyy HH:mm')}"></small>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a th:href="@{/ratesetter/departments/{id}/edit(id=${department.id})}"
+                                   class="btn btn-outline-warning"
+                                   title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form th:action="@{/ratesetter/departments/{id}/delete(id=${department.id})}"
+                                      method="post"
+                                      class="d-inline">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-danger delete-btn"
+                                            th:attr="data-department-name=${department.name}"
+                                            title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(departments)}">
+                        <td colspan="4" class="text-center text-muted py-3">
+                            <i class="bi bi-info-circle"></i> Нет подразделений
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const departmentName = this.getAttribute('data-department-name');
+                    if (!confirm('Удалить подразделение \"' + departmentName + '\"? Это действие нельзя отменить.')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+</div>
+</body>
+</html>
