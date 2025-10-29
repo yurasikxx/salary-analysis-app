@@ -2,8 +2,11 @@ package by.bsuir.saa.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Entity
@@ -41,6 +44,9 @@ public class Timesheet {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "timesheet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<TimesheetEntry> timesheetEntries = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

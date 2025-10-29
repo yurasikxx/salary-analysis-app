@@ -94,4 +94,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
             "ORDER BY SUM(ABS(p.amount)) DESC")
     List<Object[]> findTaxStatisticsByType(@Param("month") Integer month,
                                            @Param("year") Integer year);
+
+    @Query("SELECT COUNT(p) > 0 FROM Payment p WHERE p.employee = :employee AND p.month = :month AND p.year = :year " +
+            "AND p.paymentType.category = 'deduction' AND p.paymentType.code IN ('ПН', 'ФСЗН')")
+    boolean hasTaxesForEmployee(@Param("employee") Employee employee,
+                                @Param("month") Integer month,
+                                @Param("year") Integer year);
 }

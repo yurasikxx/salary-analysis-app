@@ -28,6 +28,7 @@ public class RatesetterController {
     private final PaymentService paymentService;
     private final SalaryCalculationService salaryCalculationService;
     private final BonusCalculationService bonusCalculationService;
+    private final TaxCalculationService taxCalculationService;
 
     public RatesetterController(PositionService positionService,
                                 DepartmentService departmentService,
@@ -36,7 +37,8 @@ public class RatesetterController {
                                 TimesheetService timesheetService,
                                 PaymentService paymentService,
                                 SalaryCalculationService salaryCalculationService,
-                                BonusCalculationService bonusCalculationService) {
+                                BonusCalculationService bonusCalculationService,
+                                TaxCalculationService taxCalculationService) {
         this.positionService = positionService;
         this.departmentService = departmentService;
         this.paymentTypeService = paymentTypeService;
@@ -45,6 +47,7 @@ public class RatesetterController {
         this.paymentService = paymentService;
         this.salaryCalculationService = salaryCalculationService;
         this.bonusCalculationService = bonusCalculationService;
+        this.taxCalculationService = taxCalculationService;
     }
 
     @GetMapping("/dashboard")
@@ -493,7 +496,7 @@ public class RatesetterController {
                               @RequestParam(required = false) Integer departmentId,
                               Model model) {
 
-        model.addAttribute("title", "Начисление надбавок и премий");
+        model.addAttribute("title", "Надбавки и премии");
         model.addAttribute("icon", "bi-award");
         model.addAttribute("month", month);
         model.addAttribute("year", year);
@@ -503,17 +506,16 @@ public class RatesetterController {
         List<Employee> employees = employeeService.getActiveEmployees();
         List<Department> departments = departmentService.getAllDepartments();
 
-        List<PaymentType> bonusTypes = paymentTypeService.getAccrualTypes().stream()
-                .filter(pt -> !"ОКЛ".equals(pt.getCode()) &&
-                        !"ИТР".equals(pt.getCode()) &&
-                        !"СТАЖ".equals(pt.getCode()))
-                .toList();
-
         if (departmentId != null) {
             employees = employees.stream()
                     .filter(e -> e.getDepartment().getId().equals(departmentId))
                     .toList();
         }
+
+        // Только ПХД и ПСС для ручного начисления нормировщиком
+        List<PaymentType> bonusTypes = paymentTypeService.getAccrualTypes().stream()
+                .filter(pt -> "ПХД".equals(pt.getCode()) || "ПСС".equals(pt.getCode()))
+                .toList();
 
         List<EmployeeBonusInfo> bonusInfos = employees.stream()
                 .map(employee -> {
@@ -522,13 +524,15 @@ public class RatesetterController {
 
                     List<Payment> allPayments = paymentService.getEmployeePayments(employee, month, year);
 
-                    List<Payment> bonuses = allPayments.stream()
-                            .filter(p -> !"ОКЛ".equals(p.getPaymentType().getCode()) &&
-                                    "accrual".equals(p.getPaymentType().getCategory()))
+                    // Только надбавки нормировщика (ПХД, ПСС, СТАЖ)
+                    List<Payment> ratesetterBonuses = allPayments.stream()
+                            .filter(p -> "ПХД".equals(p.getPaymentType().getCode()) ||
+                                    "ПСС".equals(p.getPaymentType().getCode()) ||
+                                    "СТАЖ".equals(p.getPaymentType().getCode()))
                             .toList();
 
-                    info.setExistingBonuses(bonuses);
-                    info.setTotalBonuses(bonuses.stream()
+                    info.setExistingBonuses(ratesetterBonuses);
+                    info.setTotalBonuses(ratesetterBonuses.stream()
                             .map(Payment::getAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add));
 
@@ -537,14 +541,12 @@ public class RatesetterController {
                     info.setHasBaseSalary(hasBaseSalary);
 
                     info.setSeniorityYears(bonusCalculationService.getEmployeeSeniority(employee));
-                    info.setSeniorityPercentage(bonusCalculationService.getSeniorityPercentage(employee));
+                    info.setSeniorityPercentage(bonusCalculationService.getSeniorityPercentageText(employee));
 
-                    boolean hasItrBonus = allPayments.stream()
-                            .anyMatch(p -> "ИТР".equals(p.getPaymentType().getCode()));
+                    // Проверяем автоматические надбавки нормировщика
                     boolean hasSeniorityBonus = allPayments.stream()
                             .anyMatch(p -> "СТАЖ".equals(p.getPaymentType().getCode()));
 
-                    info.setHasItrBonus(hasItrBonus);
                     info.setHasSeniorityBonus(hasSeniorityBonus);
 
                     return info;
@@ -559,8 +561,8 @@ public class RatesetterController {
                 .map(EmployeeBonusInfo::getTotalBonuses)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        long employeesWithoutAutomaticBonuses = bonusInfos.stream()
-                .filter(info -> info.hasBaseSalary && (!info.hasItrBonus || !info.hasSeniorityBonus))
+        long employeesWithoutSeniorityBonus = bonusInfos.stream()
+                .filter(info -> info.hasBaseSalary && !info.hasSeniorityBonus && info.seniorityYears >= 1)
                 .count();
 
         model.addAttribute("bonusInfos", bonusInfos);
@@ -569,7 +571,7 @@ public class RatesetterController {
         model.addAttribute("totalEmployees", employees.size());
         model.addAttribute("employeesWithBonuses", employeesWithBonuses);
         model.addAttribute("totalBonusesAmount", totalBonusesAmount);
-        model.addAttribute("employeesWithoutAutomaticBonuses", employeesWithoutAutomaticBonuses);
+        model.addAttribute("employeesWithoutSeniorityBonus", employeesWithoutSeniorityBonus);
 
         return "ratesetter/bonuses";
     }
@@ -583,14 +585,14 @@ public class RatesetterController {
         Employee employee = employeeService.getEmployeeById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
+        // Проверяем, рассчитан ли оклад
         if (!bonusCalculationService.isBaseSalaryCalculated(employee, month, year)) {
             throw new RuntimeException("Нельзя добавлять надбавки до расчета основной зарплаты");
         }
 
+        // Получаем только разрешенные типы надбавок для нормировщика
         List<PaymentType> bonusTypes = paymentTypeService.getAccrualTypes().stream()
-                .filter(pt -> !"ОКЛ".equals(pt.getCode()) &&
-                        !"ИТР".equals(pt.getCode()) &&
-                        !"СТАЖ".equals(pt.getCode()))
+                .filter(pt -> "ПХД".equals(pt.getCode()) || "ПСС".equals(pt.getCode()))
                 .toList();
 
         model.addAttribute("title", "Добавить надбавку");
@@ -599,6 +601,7 @@ public class RatesetterController {
         model.addAttribute("bonusTypes", bonusTypes);
         model.addAttribute("month", month);
         model.addAttribute("year", year);
+        model.addAttribute("russianMonth", MonthUtil.getRussianMonthName(month));
 
         return "ratesetter/add-bonus";
     }
@@ -616,28 +619,38 @@ public class RatesetterController {
             Employee employee = employeeService.getEmployeeById(employeeId)
                     .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
+            // Проверяем, рассчитан ли оклад
             if (!bonusCalculationService.isBaseSalaryCalculated(employee, month, year)) {
                 throw new RuntimeException("Нельзя добавлять надбавки до расчета основной зарплаты");
+            }
+
+            // Проверяем, не рассчитаны ли уже налоги
+            if (taxCalculationService.hasTaxesCalculated(employee, month, year)) {
+                throw new RuntimeException("Нельзя добавлять начисления после расчета налогов");
             }
 
             PaymentType paymentType = paymentTypeService.getPaymentTypeById(paymentTypeId)
                     .orElseThrow(() -> new RuntimeException("Тип начисления не найден"));
 
-            if ("ИТР".equals(paymentType.getCode()) || "СТАЖ".equals(paymentType.getCode())) {
-                throw new RuntimeException("Данный тип надбавки рассчитывается автоматически");
+            // Проверяем, что нормировщик может начислять только ПХД и ПСС
+            if (!"ПХД".equals(paymentType.getCode()) && !"ПСС".equals(paymentType.getCode())) {
+                throw new RuntimeException("Нормировщик может начислять только ПХД и ПСС");
             }
 
-            if (!"accrual".equals(paymentType.getCategory())) {
-                throw new RuntimeException("Можно начислять только виды accrual");
-            }
-
+            // Проверяем, не существует ли уже надбавка такого типа
             boolean alreadyExists = paymentService.getEmployeePayments(employee, month, year).stream()
                     .anyMatch(p -> p.getPaymentType().getId().equals(paymentTypeId));
 
             if (alreadyExists) {
-                throw new RuntimeException("Надбавка данного типа уже была начислена за этот период");
+                throw new RuntimeException("Надбавка '" + paymentType.getName() + "' уже начислена за этот период");
             }
 
+            // Проверяем сумму
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("Сумма надбавки должна быть положительной");
+            }
+
+            // Создаем платеж
             paymentService.createPayment(employee, month, year, paymentType, amount, description);
 
             redirectAttributes.addFlashAttribute("success",
@@ -671,6 +684,38 @@ public class RatesetterController {
         return "redirect:/ratesetter/bonuses?month=%d&year=%d".formatted(month, year);
     }
 
+    @PostMapping("/bonuses/calculate-automatic-batch")
+    public String calculateAutomaticBonusesBatch(@RequestParam Integer month,
+                                                 @RequestParam Integer year,
+                                                 RedirectAttributes redirectAttributes) {
+        try {
+            List<Employee> employees = employeeService.getActiveEmployees();
+            int calculatedCount = 0;
+
+            for (Employee employee : employees) {
+                if (bonusCalculationService.isBaseSalaryCalculated(employee, month, year) &&
+                        bonusCalculationService.getEmployeeSeniority(employee) >= 1 &&
+                        paymentService.getEmployeePayments(employee, month, year).stream()
+                                .noneMatch(p -> "СТАЖ".equals(p.getPaymentType().getCode()))) {
+                    try {
+                        bonusCalculationService.calculateSeniorityBonus(employee, month, year);
+                        calculatedCount++;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Надбавка за стаж рассчитана для " + calculatedCount + " сотрудников");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+
+        return "redirect:/ratesetter/bonuses?month=%d&year=%d".formatted(month, year);
+    }
+
     @PostMapping("/bonuses/{id}/delete")
     public String deleteBonus(@PathVariable Integer id,
                               @RequestParam Integer month,
@@ -681,8 +726,15 @@ public class RatesetterController {
                     .orElseThrow(() -> new RuntimeException("Надбавка не найдена"));
 
             String paymentCode = payment.getPaymentType().getCode();
-            if ("ОКЛ".equals(paymentCode) || "ИТР".equals(paymentCode) || "СТАЖ".equals(paymentCode)) {
-                throw new RuntimeException("Нельзя удалить автоматическую надбавку или оклад");
+
+            // Нормировщик может удалять ПХД, ПСС и СТАЖ
+            if (!"ПХД".equals(paymentCode) && !"ПСС".equals(paymentCode) && !"СТАЖ".equals(paymentCode)) {
+                throw new RuntimeException("Нормировщик может удалять только надбавки ПХД, ПСС и СТАЖ");
+            }
+
+            // Проверяем, есть ли уже налоги
+            if (hasTaxes(payment.getEmployee(), month, year)) {
+                throw new RuntimeException("Нельзя удалять надбавки после начисления налогов");
             }
 
             paymentService.deletePayment(id);
@@ -727,6 +779,21 @@ public class RatesetterController {
         return result.toString();
     }
 
+    private boolean hasTaxes(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentService.getEmployeePayments(employee, month, year);
+        return payments.stream()
+                .anyMatch(p -> "deduction".equals(p.getPaymentType().getCategory()) &&
+                        ("ПН".equals(p.getPaymentType().getCode()) ||
+                                "ФСЗН".equals(p.getPaymentType().getCode())));
+    }
+
+    private boolean hasBonuses(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentService.getEmployeePayments(employee, month, year);
+        return payments.stream()
+                .anyMatch(p -> "accrual".equals(p.getPaymentType().getCategory()) &&
+                        !"ОКЛ".equals(p.getPaymentType().getCode()));
+    }
+
     @Data
     public static class EmployeeSalaryInfo {
         private Employee employee;
@@ -755,8 +822,7 @@ public class RatesetterController {
         private List<Payment> existingBonuses;
         private BigDecimal totalBonuses;
         private Long seniorityYears;
-        private BigDecimal seniorityPercentage;
-        private boolean hasItrBonus;
+        private String seniorityPercentage; // Теперь String для отображения
         private boolean hasSeniorityBonus;
         private boolean hasBaseSalary;
 
@@ -765,21 +831,7 @@ public class RatesetterController {
         }
 
         public boolean canCalculateAutomaticBonuses() {
-            return hasBaseSalary && (!hasItrBonus || !hasSeniorityBonus);
-        }
-
-        public String getSeniorityBadgeClass() {
-            if (seniorityYears >= 10) return "bg-danger";
-            if (seniorityYears >= 3) return "bg-warning";
-            if (seniorityYears >= 1) return "bg-info";
-            return "bg-secondary";
-        }
-
-        public String getSeniorityText() {
-            if (seniorityYears >= 10) return "25%";
-            if (seniorityYears >= 3) return "15%";
-            if (seniorityYears >= 1) return "5%";
-            return "0%";
+            return hasBaseSalary && !hasSeniorityBonus && seniorityYears >= 1;
         }
     }
 }

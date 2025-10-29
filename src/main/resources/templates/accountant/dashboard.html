@@ -2,11 +2,11 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Главная панель - Бухгалтер</title>
+    <title>Главная - Бухгалтер</title>
 </head>
 <body th:replace="~{layout :: html(
-    title='Главная панель бухгалтера',
-    icon='bi-speedometer2',
+    title='Главная',
+    icon='bi-calculator',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
@@ -14,156 +14,255 @@
 
 <div id="actions">
     <div class="btn-group">
+        <label for="periodSelect">Период: </label>
         <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
             <option th:each="m : ${#numbers.sequence(1,12)}"
                     th:value="${m + ',' + year}"
                     th:selected="${month == m}"
-                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM yyyy')}">
+                    th:text="${@monthUtil.getRussianMonthName(m) + ' ' + year}">
             </option>
         </select>
     </div>
 </div>
 
 <div id="content">
-    <div class="card mb-4">
+    <div class="card bg-primary text-white mb-4">
         <div class="card-body">
-            <form method="get" th:action="@{/accountant/dashboard}" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label for="month" class="form-label">Месяц</label>
-                    <select class="form-select" id="month" name="month">
-                        <option th:each="m : ${#numbers.sequence(1,12)}"
-                                th:value="${m}"
-                                th:selected="${month == m}"
-                                th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM')}">
-                        </option>
-                    </select>
+            <div class="row">
+                <div class="col-md-8">
+                    <h1 class="display-6"><i class="bi bi-calculator"></i> Дашборд бухгалтера</h1>
+                    <p class="lead mb-0">Начисление премий, удержаний и формирование отчетности</p>
                 </div>
-                <div class="col-md-3">
-                    <label for="year" class="form-label">Год</label>
-                    <select class="form-select" id="year" name="year">
-                        <option th:each="y : ${#numbers.sequence(2020, 2030)}"
-                                th:value="${y}"
-                                th:selected="${year == y}"
-                                th:text="${y}">
-                        </option>
-                    </select>
+                <div class="col-md-4 text-end">
+                    <h3 th:text="${russianMonth + ' ' + year}"></h3>
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-dark w-100">
-                        <i class="bi bi-filter"></i> Применить
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Всего начислено</h6>
-                            <h3 th:text="${totalAccruals + ' руб.'}">0 руб.</h3>
-                        </div>
-                        <i class="bi bi-cash-coin fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Фонд оплаты труда</p>
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего сотрудников</h6>
+                    <h3 th:text="${totalEmployees}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-danger">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Всего удержано</h6>
-                            <h3 th:text="${totalDeductions + ' руб.'}">0 руб.</h3>
-                        </div>
-                        <i class="bi bi-arrow-down-circle fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Налоги и удержания</p>
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-coin fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего начислено</h6>
+                    <h3 th:text="${#numbers.formatDecimal(totalAccruals, 1, 'POINT', 2, 'COMMA')} + ' руб.'">0 руб.</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">К выплате</h6>
-                            <h3 th:text="${netTotal + ' руб.'}">0 руб.</h3>
-                        </div>
-                        <i class="bi bi-wallet2 fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Чистая сумма</p>
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-percent fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего удержано</h6>
+                    <h3 th:text="${#numbers.formatDecimal(totalDeductions, 1, 'POINT', 2, 'COMMA')} + ' руб.'">0
+                        руб.</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Сотрудников</h6>
-                            <h3 th:text="${totalEmployees}">0</h3>
-                        </div>
-                        <i class="bi bi-people fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Всего активных</p>
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <i class="bi bi-wallet fs-1 mb-2"></i>
+                    <h6 class="card-title">К выплате</h6>
+                    <h3 th:text="${#numbers.formatDecimal(totalNetSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'">0
+                        руб.</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
+    <div class="row mb-4">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-graph-up"></i> Статус расчетов
+                        <i class="bi bi-speedometer2"></i> Статус расчетов заработной платы
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Сотрудники с расчетами</span>
-                            <span th:text="${employeesWithCalculations + '/' + totalEmployees}"></span>
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-check-circle text-success fs-1"></i>
+                                <h4 th:text="${employeesWithFinalSalary}">0</h4>
+                                <p class="text-muted mb-0">Итог рассчитан</p>
+                            </div>
                         </div>
-                        <div class="progress" style="height: 20px;">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-percent text-info fs-1"></i>
+                                <h4 th:text="${employeesWithTaxes}">0</h4>
+                                <p class="text-muted mb-0">Налоги начислены</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-award text-warning fs-1"></i>
+                                <h4 th:text="${employeesWithBonuses}">0</h4>
+                                <p class="text-muted mb-0">Премии начислены</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-clock text-danger fs-1"></i>
+                                <h4 th:text="${totalEmployees - employeesWithCalculations}">0</h4>
+                                <p class="text-muted mb-0">Ожидают расчета</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small>Прогресс расчетов заработной платы</small>
+                            <small th:text="${finalSalaryRate + '%'}"></small>
+                        </div>
+                        <div class="progress" style="height: 25px;">
                             <div class="progress-bar bg-success"
-                                 th:styleappend="'width: ' + ${(employeesWithCalculations / totalEmployees) * 100} + '%;'"
-                                 role="progressbar">
-                                <span th:text="${#numbers.formatDecimal((employeesWithCalculations / totalEmployees) * 100, 1, 1) + '%'}"></span>
+                                 th:style="'width: ' + ${finalSalaryPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Итог рассчитан"
+                                 th:text="${finalSalaryPercent > 10} ? ${#numbers.formatDecimal(finalSalaryPercent, 1, 1) + '%'} : ''">
+                            </div>
+                            <div class="progress-bar bg-info"
+                                 th:style="'width: ' + ${readyForFinalPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Готовы к итогу"
+                                 th:text="${readyForFinalPercent > 10} ? ${#numbers.formatDecimal(readyForFinalPercent, 1, 1) + '%'} : ''">
+                            </div>
+                            <div class="progress-bar bg-warning"
+                                 th:style="'width: ' + ${readyForTaxesPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Готовы к налогам"
+                                 th:text="${readyForTaxesPercent > 10} ? ${#numbers.formatDecimal(readyForTaxesPercent, 1, 1) + '%'} : ''">
+                            </div>
+                            <div class="progress-bar bg-secondary"
+                                 th:style="'width: ' + ${waitingForCalculationPercent} + '%;'"
+                                 data-bs-toggle="tooltip"
+                                 data-bs-title="Ожидают расчета"
+                                 th:text="${waitingForCalculationPercent > 10} ? ${#numbers.formatDecimal(waitingForCalculationPercent, 1, 1) + '%'} : ''">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4 text-center">
+                        <div class="col-md-4">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary">
+                                        <i class="bi bi-award"></i> Статус премий
+                                    </h5>
+                                    <h3 th:text="${employeesWithBonuses + '/' + employeesWithCalculations}">0/0</h3>
+                                    <p class="card-text">
+                                        <span th:text="${bonusRate}">0</span>% сотрудников с премиями
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success">
+                                        <i class="bi bi-percent"></i> Статус налогов
+                                    </h5>
+                                    <h3 th:text="${employeesWithTaxes + '/' + employeesWithBonuses}">0/0</h3>
+                                    <p class="card-text">
+                                        <span th:text="${taxRate}">0</span>% сотрудников с налогами
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-info">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info">
+                                        <i class="bi bi-wallet"></i> Статус итогов
+                                    </h5>
+                                    <h3 th:text="${employeesWithFinalSalary + '/' + employeesWithTaxes}">0/0</h3>
+                                    <p class="card-text">
+                                        <span th:text="${finalSalaryRate}">0</span>% сотрудников с итогами
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightning"></i> Быстрые действия
-                    </h5>
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-award text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Премии по предприятию</h5>
+                    <p class="card-text">Начисление общих премий и премий ИТР</p>
+                    <a th:href="@{/accountant/enterprise-bonuses(month=${month}, year=${year})}"
+                       class="btn btn-primary">
+                        Управление премиями
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a th:href="@{/accountant/deductions(month=${month}, year=${year})}"
-                           class="btn btn-outline-primary btn-lg">
-                            <i class="bi bi-calculator"></i> Управление удержаниями
-                        </a>
-                        <a th:href="@{/accountant/reports(month=${month}, year=${year})}"
-                           class="btn btn-outline-info">
-                            <i class="bi bi-file-text"></i> Сформировать отчеты
-                        </a>
-                        <a th:href="@{/accountant/payments(month=${month}, year=${year})}"
-                           class="btn btn-outline-secondary">
-                            <i class="bi bi-cash-stack"></i> Просмотреть все платежи
-                        </a>
-                    </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-calculator text-success fs-1 mb-3"></i>
+                    <h5 class="card-title">Удержания</h5>
+                    <p class="card-text">Расчет налогов и других удержаний</p>
+                    <a th:href="@{/accountant/deductions(month=${month}, year=${year})}"
+                       class="btn btn-success">
+                        Управление удержаниями
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-stack text-success fs-1 mb-3"></i>
+                    <h5 class="card-title">Итоговая зарплата</h5>
+                    <p class="card-text">Расчет итоговых сумм к выплате сотрудникам</p>
+                    <a th:href="@{/accountant/final-salary(month=${month}, year=${year})}"
+                       class="btn btn-success">
+                        Рассчитать итоги
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text text-info fs-1 mb-3"></i>
+                    <h5 class="card-title">Отчетность</h5>
+                    <p class="card-text">Формирование расчетных ведомостей и отчетов</p>
+                    <a th:href="@{/accountant/reports(month=${month}, year=${year})}"
+                       class="btn btn-info">
+                        Формировать отчеты
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-heart text-warning fs-1 mb-3"></i>
+                    <h5 class="card-title">Отпуск и больничные</h5>
+                    <p class="card-text">Расчет отпускных и больничных выплат</p>
+                    <a th:href="@{/accountant/vacation-sickleave(month=${month}, year=${year})}"
+                       class="btn btn-warning">
+                        Расчет выплат
+                    </a>
                 </div>
             </div>
         </div>
@@ -177,6 +276,13 @@
             const [month, year] = select.value.split(',');
             window.location.href = '/accountant/dashboard?month=' + month + '&year=' + year;
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
     </script>
 </div>
 </body>

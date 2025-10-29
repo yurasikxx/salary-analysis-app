@@ -32,4 +32,6 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Integer> {
                                       @Param("year") Integer year,
                                       @Param("status") Timesheet.TimesheetStatus status);
 
+    @Query("SELECT DISTINCT t FROM Timesheet t LEFT JOIN FETCH t.timesheetEntries WHERE t.month = :month AND t.year = :year")
+    List<Timesheet> findByMonthAndYearWithEntries(@Param("month") Integer month, @Param("year") Integer year);
 }

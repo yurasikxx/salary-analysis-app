@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -162,6 +163,22 @@ public class TimesheetService {
 
     public void deleteTimesheet(Integer timesheetId) {
         timesheetRepository.deleteById(timesheetId);
+    }
+
+    public Map<String, Long> countDaysByMarkType(Employee employee, Integer month, Integer year) {
+        Optional<Timesheet> timesheetOpt = getTimesheet(employee, month, year);
+        if (timesheetOpt.isEmpty() || timesheetOpt.get().getStatus() != Timesheet.TimesheetStatus.CONFIRMED) {
+            return Map.of();
+        }
+
+        Timesheet timesheet = timesheetOpt.get();
+        List<TimesheetEntry> entries = timesheetEntryRepository.findByTimesheet(timesheet);
+
+        return entries.stream()
+                .collect(Collectors.groupingBy(
+                        entry -> entry.getMarkType().getCode(),
+                        Collectors.counting()
+                ));
     }
 
     private void updateTotalHours(Timesheet timesheet) {

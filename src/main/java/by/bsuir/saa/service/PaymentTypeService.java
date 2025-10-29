@@ -1,6 +1,8 @@
 package by.bsuir.saa.service;
 
+import by.bsuir.saa.entity.Employee;
 import by.bsuir.saa.entity.PaymentType;
+import by.bsuir.saa.entity.Timesheet;
 import by.bsuir.saa.repository.PaymentRepository;
 import by.bsuir.saa.repository.PaymentTypeRepository;
 import org.springframework.stereotype.Service;
@@ -15,11 +17,17 @@ public class PaymentTypeService {
 
     private final PaymentTypeRepository paymentTypeRepository;
     private final PaymentRepository paymentRepository;
+    private final EmployeeService employeeService;
+    private final TimesheetService timesheetService;
 
     public PaymentTypeService(PaymentTypeRepository paymentTypeRepository,
-                              PaymentRepository paymentRepository) {
+                              PaymentRepository paymentRepository,
+                              EmployeeService employeeService,
+                              TimesheetService timesheetService) {
         this.paymentTypeRepository = paymentTypeRepository;
         this.paymentRepository = paymentRepository;
+        this.employeeService = employeeService;
+        this.timesheetService = timesheetService;
     }
 
     public List<PaymentType> getAllPaymentTypes() {
@@ -40,6 +48,26 @@ public class PaymentTypeService {
 
     public List<PaymentType> getDeductionTypes() {
         return paymentTypeRepository.findByCategory("deduction");
+    }
+
+    public Optional<PaymentType> getVacationPaymentType() {
+        return getPaymentTypeByCode("ОТП");
+    }
+
+    public Optional<PaymentType> getSickLeavePaymentType() {
+        return getPaymentTypeByCode("БОЛ");
+    }
+
+    public boolean isVacationOrSickLeavePayment(PaymentType paymentType) {
+        return "ОТП".equals(paymentType.getCode()) || "БОЛ".equals(paymentType.getCode());
+    }
+
+    public List<Employee> getEmployeesWithConfirmedTimesheets(Integer month, Integer year) {
+        return employeeService.getActiveEmployees().stream()
+                .filter(employee -> timesheetService.getTimesheet(employee, month, year)
+                        .map(t -> t.getStatus() == Timesheet.TimesheetStatus.CONFIRMED)
+                        .orElse(false))
+                .toList();
     }
 
     public boolean paymentTypeExists(String code) {

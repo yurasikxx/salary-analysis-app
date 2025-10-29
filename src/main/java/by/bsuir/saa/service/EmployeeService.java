@@ -57,10 +57,6 @@ public class EmployeeService {
         return employeeRepository.findAllWithDetails();
     }
 
-    public List<Employee> getActiveEmployeesWithDetails() {
-        return employeeRepository.findActiveEmployeesWithDetails();
-    }
-
     public long getActiveEmployeeCount() {
         return employeeRepository.countByTerminationDateIsNull();
     }

@@ -33,7 +33,6 @@ public class BonusCalculationService {
     @Transactional
     public void calculateAllAutomaticBonuses(Employee employee, Integer month, Integer year) {
         validateBaseSalaryCalculated(employee, month, year);
-        calculateItrBonus(employee, month, year);
         calculateSeniorityBonus(employee, month, year);
     }
 
@@ -93,6 +92,27 @@ public class BonusCalculationService {
         } else {
             return BigDecimal.ZERO;
         }
+    }
+
+    public String getSeniorityBadgeClass(Employee employee) {
+        long years = getEmployeeSeniority(employee);
+        if (years >= 10) return "bg-danger";
+        if (years >= 3) return "bg-warning";
+        if (years >= 1) return "bg-info";
+        return "bg-secondary";
+    }
+
+    public BigDecimal getSeniorityPercentageValue(Employee employee) {
+        long years = getEmployeeSeniority(employee);
+        if (years >= 10) return new BigDecimal("0.25");
+        if (years >= 3) return new BigDecimal("0.15");
+        if (years >= 1) return new BigDecimal("0.05");
+        return BigDecimal.ZERO;
+    }
+
+    public String getSeniorityPercentageText(Employee employee) {
+        BigDecimal percentage = getSeniorityPercentageValue(employee);
+        return String.valueOf(percentage.multiply(new BigDecimal("100")).intValue());
     }
 
     private void validateBaseSalaryCalculated(Employee employee, Integer month, Integer year) {

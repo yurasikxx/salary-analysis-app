@@ -53,6 +53,14 @@ public class SalaryCalculationService {
 
     @Transactional
     public void calculateAndSaveBaseSalary(Employee employee, Integer month, Integer year) {
+        if (hasBonuses(employee, month, year)) {
+            throw new RuntimeException("Нельзя пересчитывать оклад при наличии надбавок");
+        }
+
+        if (hasTaxes(employee, month, year)) {
+            throw new RuntimeException("Нельзя пересчитывать оклад после начисления налогов");
+        }
+
         BigDecimal baseSalary = calculateBaseSalary(employee, month, year);
         PaymentType salaryPaymentType = getSalaryPaymentType();
 
@@ -168,5 +176,20 @@ public class SalaryCalculationService {
 
         return String.format("Основная заработная плата за %d.%d (%s ч. из %d ч.)",
                 month, year, actualHours, standardHours);
+    }
+
+    private boolean hasTaxes(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentService.getEmployeePayments(employee, month, year);
+        return payments.stream()
+                .anyMatch(p -> "deduction".equals(p.getPaymentType().getCategory()) &&
+                        ("ПН".equals(p.getPaymentType().getCode()) ||
+                                "ФСЗН".equals(p.getPaymentType().getCode())));
+    }
+
+    private boolean hasBonuses(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentService.getEmployeePayments(employee, month, year);
+        return payments.stream()
+                .anyMatch(p -> "accrual".equals(p.getPaymentType().getCategory()) &&
+                        !"ОКЛ".equals(p.getPaymentType().getCode()));
     }
 }
