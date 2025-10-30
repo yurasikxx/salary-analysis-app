@@ -5,7 +5,7 @@
     <title>Табели учета - Специалист по кадрам</title>
 </head>
 <body th:replace="~{layout :: html(
-    title='Табели учета рабочего времени',
+    title='Табельный учёт',
     icon='bi-calendar-check',
     actions=~{:: #actions},
     content=~{:: #content},
@@ -25,6 +25,17 @@
                          document.querySelector('select[name=month]').options[document.querySelector('select[name=month]').selectedIndex].text + ' ' +
                          document.querySelector('select[name=year]').options[document.querySelector('select[name=year]').selectedIndex].text + '?')">
             <i class="bi bi-collection"></i> Создать все табели
+        </button>
+    </form>
+    <form th:action="@{/hr/timesheets/fill-full-month-all}" method="post" class="d-inline me-2">
+        <input type="hidden" name="month" th:value="${month}">
+        <input type="hidden" name="year" th:value="${year}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn btn-outline-info"
+                onclick="return confirm('Заполнить все пустые табели рабочими днями за ' +
+                     document.querySelector('select[name=month]').options[document.querySelector('select[name=month]').selectedIndex].text + ' ' +
+                     document.querySelector('select[name=year]').options[document.querySelector('select[name=year]').selectedIndex].text + '?')">
+            <i class="bi bi-calendar-check"></i> Заполнить все пустые табели
         </button>
     </form>
     <form th:action="@{/hr/timesheets/batch-confirm}" method="post" class="d-inline">
@@ -214,6 +225,21 @@
                                             th:attr="data-employee-name=${timesheet.employee.fullName},
                                                      data-timesheet-status=${timesheet.status.name()}">
                                         <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+
+                                <form th:if="${timesheet.status.name() == 'CONFIRMED'}"
+                                      th:action="@{/hr/timesheets/{id}/unconfirm(id=${timesheet.id})}"
+                                      method="post"
+                                      class="d-inline ms-1">
+                                    <input type="hidden" name="month" th:value="${month}">
+                                    <input type="hidden" name="year" th:value="${year}">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-warning btn-sm"
+                                            th:attr="data-employee-name=${timesheet.employee.fullName}"
+                                            onclick="return confirm('Отменить подтверждение табеля сотрудника ' + this.getAttribute('data-employee-name') + '?')">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Отменить
                                     </button>
                                 </form>
                             </div>

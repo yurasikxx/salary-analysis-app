@@ -1,6 +1,7 @@
 package by.bsuir.saa.service;
 
 import by.bsuir.saa.entity.Employee;
+import by.bsuir.saa.entity.Payment;
 import by.bsuir.saa.entity.PaymentType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +22,19 @@ public class BonusCalculationService {
     private final PaymentService paymentService;
     private final PaymentTypeService paymentTypeService;
     private final SalaryCalculationService salaryCalculationService;
+    private final FinalSalaryCalculationService finalSalaryCalculationService;
+    private final TaxCalculationService taxCalculationService;
 
     public BonusCalculationService(PaymentService paymentService,
                                    PaymentTypeService paymentTypeService,
-                                   SalaryCalculationService salaryCalculationService) {
+                                   SalaryCalculationService salaryCalculationService,
+                                   FinalSalaryCalculationService finalSalaryCalculationService,
+                                   TaxCalculationService taxCalculationService) {
         this.paymentService = paymentService;
         this.paymentTypeService = paymentTypeService;
         this.salaryCalculationService = salaryCalculationService;
+        this.finalSalaryCalculationService = finalSalaryCalculationService;
+        this.taxCalculationService = taxCalculationService;
     }
 
     @Transactional
@@ -38,6 +45,7 @@ public class BonusCalculationService {
 
     @Transactional
     public void calculateItrBonus(Employee employee, Integer month, Integer year) {
+        validateCanCalculateOrModifyBonus(employee, month, year);
         validateBaseSalaryCalculated(employee, month, year);
 
         PaymentType itrBonusType = getPaymentType(ITR_BONUS_CODE);
@@ -52,6 +60,7 @@ public class BonusCalculationService {
 
     @Transactional
     public void calculateSeniorityBonus(Employee employee, Integer month, Integer year) {
+        validateCanCalculateOrModifyBonus(employee, month, year);
         validateBaseSalaryCalculated(employee, month, year);
 
         PaymentType seniorityType = getPaymentType(SENIORITY_BONUS_CODE);
@@ -67,6 +76,16 @@ public class BonusCalculationService {
             createBonusPayment(employee, month, year, seniorityType, seniorityBonus,
                     buildSeniorityDescription(bonusPercentage, seniorityYears));
         }
+    }
+
+    @Transactional
+    public void deleteBonus(Integer bonusId, Integer month, Integer year) {
+        Payment bonus = paymentService.getPaymentById(bonusId)
+                .orElseThrow(() -> new RuntimeException("Надбавка не найдена"));
+
+        validateCanDeleteBonus(bonus.getEmployee(), month, year);
+
+        paymentService.deletePayment(bonusId);
     }
 
     public boolean isBaseSalaryCalculated(Employee employee, Integer month, Integer year) {
@@ -160,5 +179,36 @@ public class BonusCalculationService {
     private void createBonusPayment(Employee employee, Integer month, Integer year,
                                     PaymentType paymentType, BigDecimal amount, String description) {
         paymentService.createPayment(employee, month, year, paymentType, amount, description);
+    }
+
+    private void validateCanDeleteBonus(Employee employee, Integer month, Integer year) {
+        if (hasTaxes(employee, month, year)) {
+            throw new RuntimeException("Нельзя удалять надбавки после начисления налогов");
+        }
+
+        if (hasFinalSalary(employee, month, year)) {
+            throw new RuntimeException("Нельзя удалять надбавки после расчета финальной зарплаты");
+        }
+    }
+
+    private boolean hasTaxes(Employee employee, Integer month, Integer year) {
+        return taxCalculationService.hasTaxesCalculated(employee, month, year);
+    }
+
+    private boolean hasFinalSalary(Employee employee, Integer month, Integer year) {
+        return finalSalaryCalculationService.isFinalSalaryCalculated(employee, month, year);
+    }
+
+    /**
+     * Проверяет, можно ли рассчитывать или изменять надбавки
+     */
+    private void validateCanCalculateOrModifyBonus(Employee employee, Integer month, Integer year) {
+        if (taxCalculationService.hasTaxesCalculated(employee, month, year)) {
+            throw new RuntimeException("Нельзя рассчитывать надбавки после начисления налогов");
+        }
+
+        if (finalSalaryCalculationService.isFinalSalaryCalculated(employee, month, year)) {
+            throw new RuntimeException("Нельзя рассчитывать надбавки после расчета финальной зарплаты");
+        }
     }
 }

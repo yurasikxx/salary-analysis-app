@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/accountant")
@@ -58,6 +59,87 @@ public class AccountantController {
         this.salaryPaymentRepository = salaryPaymentRepository;
     }
 
+    @Data
+    public static class EmployeeBonusInfo {
+        private Employee employee;
+        private List<Payment> existingBonuses;
+        private BigDecimal totalBonuses;
+        private boolean hasEnterpriseBonus;
+        private boolean hasItrBonus;
+        private boolean hasBaseSalary;
+        private BigDecimal enterpriseBonusAmount = BigDecimal.ZERO;
+        private BigDecimal itrBonusAmount = BigDecimal.ZERO;
+        private boolean hasTaxes;
+        private boolean hasFinalSalary;
+        private boolean canModifyBonuses;
+
+        public boolean hasBonuses() {
+            return existingBonuses != null && !existingBonuses.isEmpty();
+        }
+
+        public boolean canCalculateItrBonus() {
+            return hasBaseSalary && !hasItrBonus && canModifyBonuses;
+        }
+    }
+
+    @Data
+    public static class EmployeeDeductionInfo {
+        private Employee employee;
+        private List<Payment> existingDeductions;
+        private BigDecimal totalDeductions = BigDecimal.ZERO;
+        private BigDecimal totalAccruals = BigDecimal.ZERO;
+        private BigDecimal calculatedIncomeTax = BigDecimal.ZERO;
+        private BigDecimal calculatedSocialTax = BigDecimal.ZERO;
+        private boolean hasIncomeTax;
+        private boolean hasSocialTax;
+        private boolean hasBaseSalary;
+        private boolean hasBonuses;
+
+        public boolean hasDeductions() {
+            return existingDeductions != null && !existingDeductions.isEmpty();
+        }
+
+        public boolean canCalculateTaxes() {
+            return hasBaseSalary && hasBonuses && !hasIncomeTax && !hasSocialTax && totalAccruals.compareTo(BigDecimal.ZERO) > 0;
+        }
+
+        public boolean hasCalculatedTaxes() {
+            return hasIncomeTax && hasSocialTax;
+        }
+    }
+
+    @Data
+    public static class FinalSalaryInfo {
+        private Employee employee;
+        private BigDecimal totalAccrued = BigDecimal.ZERO;
+        private BigDecimal totalDeducted = BigDecimal.ZERO;
+        private BigDecimal netSalary = BigDecimal.ZERO;
+        private List<Payment> payments;
+        private boolean finalSalaryCalculated;
+        private boolean hasPayments;
+        private SalaryPayment finalSalaryPayment;
+
+        public boolean canCalculateFinalSalary() {
+            return hasPayments && !finalSalaryCalculated && totalAccrued.compareTo(BigDecimal.ZERO) > 0;
+        }
+    }
+
+    @Data
+    public static class ReportStatistics {
+        private long totalEmployees;
+        private BigDecimal totalAccrued;
+        private BigDecimal totalDeducted;
+        private BigDecimal totalNetSalary;
+
+        public ReportStatistics(long totalEmployees, BigDecimal totalAccrued,
+                                BigDecimal totalDeducted, BigDecimal totalNetSalary) {
+            this.totalEmployees = totalEmployees;
+            this.totalAccrued = totalAccrued;
+            this.totalDeducted = totalDeducted;
+            this.totalNetSalary = totalNetSalary;
+        }
+    }
+
     @GetMapping("/dashboard")
     public String dashboard(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
                             @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
@@ -72,35 +154,29 @@ public class AccountantController {
         List<Employee> employees = employeeService.getActiveEmployees();
         long totalEmployees = employees.size();
 
-        // Базовая статистика
         long employeesWithCalculations = paymentService.getEmployeesWithCalculationsCount(month, year);
         BigDecimal totalAccruals = paymentService.getTotalAccruals(month, year);
         BigDecimal totalDeductions = paymentService.getTotalDeductions(month, year);
         BigDecimal totalNetSalary = totalAccruals.add(totalDeductions);
 
-        // Дополнительная статистика
         long employeesWithBonuses = paymentService.getEmployeesWithBonusesCount(month, year);
         long employeesWithTaxes = paymentService.getEmployeesWithTaxesCount(month, year);
         long employeesWithFinalSalary = finalSalaryCalculationService.getEmployeesWithFinalSalaryCount(month, year);
 
-        // Статистика по типам начислений
         BigDecimal totalBaseSalary = paymentService.getTotalBaseSalary(month, year);
         BigDecimal totalEnterpriseBonuses = paymentService.getTotalEnterpriseBonuses(month, year);
         BigDecimal totalItrBonuses = paymentService.getTotalItrBonuses(month, year);
         BigDecimal totalSeniorityBonuses = paymentService.getTotalSeniorityBonuses(month, year);
 
-        // Статистика по удержаниям
         BigDecimal totalIncomeTax = paymentService.getTotalIncomeTax(month, year);
         BigDecimal totalSocialTax = paymentService.getTotalSocialTax(month, year);
         BigDecimal totalOtherDeductions = paymentService.getTotalOtherDeductions(month, year);
 
-        // Проценты для прогресс-баров
         double calculationRate = totalEmployees > 0 ? (employeesWithCalculations * 100.0 / totalEmployees) : 0;
         double bonusRate = totalEmployees > 0 ? (employeesWithBonuses * 100.0 / totalEmployees) : 0;
         double taxRate = totalEmployees > 0 ? (employeesWithTaxes * 100.0 / totalEmployees) : 0;
         double finalSalaryRate = totalEmployees > 0 ? (employeesWithFinalSalary * 100.0 / totalEmployees) : 0;
 
-        // Проценты для этапов расчета
         double readyForBonusesPercent = calculationRate - bonusRate;
         double readyForTaxesPercent = bonusRate - taxRate;
         double readyForFinalPercent = taxRate - finalSalaryRate;
@@ -204,7 +280,8 @@ public class AccountantController {
                     "Больничные для " + employee.getFullName() + " рассчитаны успешно");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета больничных: " + e.getMessage());
         }
 
         return "redirect:/accountant/vacation-sickleave?month=" + month + "&year=" + year;
@@ -225,7 +302,8 @@ public class AccountantController {
                     "Отпускные для " + employee.getFullName() + " рассчитаны успешно");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета отпускных: " + e.getMessage());
         }
 
         return "redirect:/accountant/vacation-sickleave?month=" + month + "&year=" + year;
@@ -246,7 +324,8 @@ public class AccountantController {
                     "Отпускные и больничные для " + employee.getFullName() + " рассчитаны успешно");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета отпускных и больничных: " + e.getMessage());
         }
 
         return "redirect:/accountant/vacation-sickleave?month=" + month + "&year=" + year;
@@ -263,7 +342,8 @@ public class AccountantController {
                     "Отпускные и больничные рассчитаны для " + calculatedCount + " сотрудников");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка пакетного расчета отпускных и больничных: " + e.getMessage());
         }
 
         return "redirect:/accountant/vacation-sickleave?month=" + month + "&year=" + year;
@@ -275,22 +355,12 @@ public class AccountantController {
                                                  @RequestParam Integer year,
                                                  RedirectAttributes redirectAttributes) {
         try {
-            Payment payment = paymentService.getPaymentById(id)
-                    .orElseThrow(() -> new RuntimeException("Платеж не найден"));
-
-            if (!paymentTypeService.isVacationOrSickLeavePayment(payment.getPaymentType())) {
-                throw new RuntimeException("Можно удалять только платежи отпускных и больничных");
-            }
-
-            if (hasTaxes(payment.getEmployee(), month, year)) {
-                throw new RuntimeException("Нельзя удалять платежи после начисления налогов");
-            }
-
-            paymentService.deletePayment(id);
-            redirectAttributes.addFlashAttribute("success", "Платеж удален");
+            vacationSickLeaveService.deleteVacationSickLeavePayment(id, month, year);
+            redirectAttributes.addFlashAttribute("success", "Платеж успешно удален");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка удаления платежа: " + e.getMessage());
         }
 
         return "redirect:/accountant/vacation-sickleave?month=" + month + "&year=" + year;
@@ -325,7 +395,6 @@ public class AccountantController {
 
                     List<Payment> allPayments = paymentService.getEmployeePayments(employee, month, year);
 
-                    // Только премии бухгалтера (ПРЕД, ИТР)
                     List<Payment> accountantBonuses = allPayments.stream()
                             .filter(p -> "ПРЕД".equals(p.getPaymentType().getCode()) ||
                                     "ИТР".equals(p.getPaymentType().getCode()))
@@ -336,7 +405,6 @@ public class AccountantController {
                             .map(Payment::getAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add));
 
-                    // Проверяем наличие конкретных премий
                     boolean hasEnterpriseBonus = allPayments.stream()
                             .anyMatch(p -> "ПРЕД".equals(p.getPaymentType().getCode()));
                     boolean hasItrBonus = allPayments.stream()
@@ -345,7 +413,6 @@ public class AccountantController {
                     info.setHasEnterpriseBonus(hasEnterpriseBonus);
                     info.setHasItrBonus(hasItrBonus);
 
-                    // Суммы премий
                     BigDecimal enterpriseBonusAmount = allPayments.stream()
                             .filter(p -> "ПРЕД".equals(p.getPaymentType().getCode()))
                             .map(Payment::getAmount)
@@ -358,10 +425,15 @@ public class AccountantController {
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     info.setItrBonusAmount(itrBonusAmount);
 
-                    // Проверяем, рассчитан ли оклад
                     boolean hasBaseSalary = allPayments.stream()
                             .anyMatch(p -> "ОКЛ".equals(p.getPaymentType().getCode()));
                     info.setHasBaseSalary(hasBaseSalary);
+
+                    boolean hasTaxes = taxCalculationService.hasTaxesCalculated(employee, month, year);
+                    boolean hasFinalSalary = finalSalaryCalculationService.isFinalSalaryCalculated(employee, month, year);
+                    info.setHasTaxes(hasTaxes);
+                    info.setHasFinalSalary(hasFinalSalary);
+                    info.setCanModifyBonuses(!hasTaxes && !hasFinalSalary);
 
                     return info;
                 })
@@ -376,7 +448,7 @@ public class AccountantController {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long employeesWithoutItrBonus = bonusInfos.stream()
-                .filter(info -> info.hasBaseSalary && !info.hasItrBonus)
+                .filter(info -> info.hasBaseSalary && !info.hasItrBonus && info.canModifyBonuses)
                 .count();
 
         BigDecimal totalItrBonuses = bonusInfos.stream()
@@ -425,8 +497,6 @@ public class AccountantController {
         return "accountant/add-enterprise-bonus";
     }
 
-    // В методах добавления/удаления платежей добавим проверку:
-
     @PostMapping("/enterprise-bonuses")
     public String addEnterpriseBonus(@RequestParam Integer employeeId,
                                      @RequestParam Integer month,
@@ -443,7 +513,6 @@ public class AccountantController {
                 throw new RuntimeException("Нельзя добавлять премии до расчета основной зарплаты");
             }
 
-            // Проверяем, не рассчитаны ли уже налоги
             if (taxCalculationService.hasTaxesCalculated(employee, month, year)) {
                 throw new RuntimeException("Нельзя добавлять начисления после расчета налогов");
             }
@@ -466,10 +535,11 @@ public class AccountantController {
                     description != null ? description.trim() : null);
 
             redirectAttributes.addFlashAttribute("success",
-                    "Премия по предприятию на сумму " + amount + " руб. начислена");
+                    "Премия по предприятию на сумму " + amount + " руб. успешно начислена сотруднику " + employee.getFullName());
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка начисления премии: " + e.getMessage());
         }
 
         return "redirect:/accountant/enterprise-bonuses?month=" + month + "&year=" + year;
@@ -486,21 +556,25 @@ public class AccountantController {
 
             String paymentCode = payment.getPaymentType().getCode();
 
-            // Бухгалтер может удалять ПРЕД и ИТР
             if (!"ПРЕД".equals(paymentCode) && !"ИТР".equals(paymentCode)) {
                 throw new RuntimeException("Бухгалтер может удалять только премии ПРЕД и ИТР");
             }
 
-            // Проверяем, есть ли уже налоги
             if (taxCalculationService.hasTaxesCalculated(payment.getEmployee(), month, year)) {
                 throw new RuntimeException("Нельзя удалять премии после начисления налогов");
             }
 
+            if (finalSalaryCalculationService.isFinalSalaryCalculated(payment.getEmployee(), month, year)) {
+                throw new RuntimeException("Нельзя удалять премии после расчета финальной зарплаты");
+            }
+
             paymentService.deletePayment(id);
-            redirectAttributes.addFlashAttribute("success", "Премия удалена");
+            redirectAttributes.addFlashAttribute("success",
+                    "Премия '" + payment.getPaymentType().getName() + "' для " + payment.getEmployee().getFullName() + " успешно удалена");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка удаления премии: " + e.getMessage());
         }
 
         return "redirect:/accountant/enterprise-bonuses?month=" + month + "&year=" + year;
@@ -515,13 +589,22 @@ public class AccountantController {
             Employee employee = employeeService.getEmployeeById(employeeId)
                     .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
+            if (taxCalculationService.hasTaxesCalculated(employee, month, year)) {
+                throw new RuntimeException("Нельзя рассчитывать премию ИТР после начисления налогов");
+            }
+
+            if (finalSalaryCalculationService.isFinalSalaryCalculated(employee, month, year)) {
+                throw new RuntimeException("Нельзя рассчитывать премию ИТР после расчета финальной зарплаты");
+            }
+
             bonusCalculationService.calculateItrBonus(employee, month, year);
 
             redirectAttributes.addFlashAttribute("success",
                     "Премия ИТР для " + employee.getFullName() + " рассчитана успешно");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета премии ИТР: " + e.getMessage());
         }
 
         return "redirect:/accountant/enterprise-bonuses?month=" + month + "&year=" + year;
@@ -542,8 +625,7 @@ public class AccountantController {
                     try {
                         bonusCalculationService.calculateItrBonus(employee, month, year);
                         calculatedCount++;
-                    } catch (Exception e) {
-                        System.err.println("Ошибка расчета премии ИТР для " + employee.getFullName() + ": " + e.getMessage());
+                    } catch (Exception ignored) {
                     }
                 }
             }
@@ -552,7 +634,8 @@ public class AccountantController {
                     "Премия ИТР рассчитана для " + calculatedCount + " сотрудников");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка пакетного расчета премии ИТР: " + e.getMessage());
         }
 
         return "redirect:/accountant/enterprise-bonuses?month=" + month + "&year=" + year;
@@ -597,27 +680,22 @@ public class AccountantController {
                             .map(p -> p.getAmount().abs())
                             .reduce(BigDecimal.ZERO, BigDecimal::add));
 
-                    // Рассчитываем общую сумму начислений для отображения
                     BigDecimal totalAccruals = allPayments.stream()
                             .filter(p -> "accrual".equals(p.getPaymentType().getCategory()))
                             .map(Payment::getAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     info.setTotalAccruals(totalAccruals);
 
-                    // Рассчитываем предполагаемые налоги
                     info.setCalculatedIncomeTax(totalAccruals.multiply(new BigDecimal("0.13")).setScale(2, RoundingMode.HALF_UP));
                     info.setCalculatedSocialTax(totalAccruals.multiply(new BigDecimal("0.01")).setScale(2, RoundingMode.HALF_UP));
 
-                    // Проверяем наличие основных удержаний
                     info.setHasIncomeTax(deductions.stream().anyMatch(p -> "ПН".equals(p.getPaymentType().getCode())));
                     info.setHasSocialTax(deductions.stream().anyMatch(p -> "ФСЗН".equals(p.getPaymentType().getCode())));
 
-                    // Проверяем, рассчитан ли оклад и можно ли рассчитывать налоги
                     boolean hasBaseSalary = allPayments.stream()
                             .anyMatch(p -> "ОКЛ".equals(p.getPaymentType().getCode()));
                     info.setHasBaseSalary(hasBaseSalary);
 
-                    // Проверяем, есть ли надбавки для расчета налогов
                     boolean hasBonuses = allPayments.stream()
                             .anyMatch(p -> "accrual".equals(p.getPaymentType().getCategory()) &&
                                     !"ОКЛ".equals(p.getPaymentType().getCode()));
@@ -663,7 +741,6 @@ public class AccountantController {
             throw new RuntimeException("Нельзя добавлять удержания до расчета основной зарплаты");
         }
 
-        // Только профсоюз и алименты для ручного добавления
         List<PaymentType> deductionTypes = paymentTypeService.getDeductionTypes().stream()
                 .filter(pt -> "АЛ".equals(pt.getCode()) || "ПВ".equals(pt.getCode()))
                 .toList();
@@ -702,16 +779,16 @@ public class AccountantController {
                 throw new RuntimeException("Можно добавлять только виды deduction");
             }
 
-            // Для удержаний сумма должна быть отрицательной
             BigDecimal deductionAmount = amount.negate();
 
             paymentService.createPayment(employee, month, year, paymentType, deductionAmount, description);
 
             redirectAttributes.addFlashAttribute("success",
-                    "Удержание '" + paymentType.getName() + "' на сумму " + amount + " руб. добавлено");
+                    "Удержание '" + paymentType.getName() + "' на сумму " + amount + " руб. успешно добавлено сотруднику " + employee.getFullName());
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка добавления удержания: " + e.getMessage());
         }
 
         return "redirect:/accountant/deductions?month=%d&year=%d".formatted(month, year);
@@ -728,16 +805,17 @@ public class AccountantController {
 
             String paymentCode = payment.getPaymentType().getCode();
 
-            // Можно удалять только профсоюз и алименты, налоги удалять нельзя
             if (!"АЛ".equals(paymentCode) && !"ПВ".equals(paymentCode)) {
                 throw new RuntimeException("Можно удалять только удержания АЛ и ПВ");
             }
 
             paymentService.deletePayment(id);
-            redirectAttributes.addFlashAttribute("success", "Удержание удалено");
+            redirectAttributes.addFlashAttribute("success",
+                    "Удержание '" + payment.getPaymentType().getName() + "' для " + payment.getEmployee().getFullName() + " успешно удалено");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка удаления удержания: " + e.getMessage());
         }
 
         return "redirect:/accountant/deductions?month=%d&year=%d".formatted(month, year);
@@ -749,10 +827,11 @@ public class AccountantController {
                                  RedirectAttributes redirectAttributes) {
         try {
             taxCalculationService.calculateTaxesBatch(month, year);
-            redirectAttributes.addFlashAttribute("success", "Налоги рассчитаны для всех сотрудников");
+            redirectAttributes.addFlashAttribute("success", "Налоги успешно рассчитаны для всех сотрудников");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета налогов: " + e.getMessage());
         }
 
         return "redirect:/accountant/deductions?month=" + month + "&year=" + year;
@@ -767,7 +846,6 @@ public class AccountantController {
             Employee employee = employeeService.getEmployeeById(employeeId)
                     .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
-            // Удаляем существующие налоги
             List<Payment> existingTaxes = paymentService.getEmployeePayments(employee, month, year)
                     .stream()
                     .filter(p -> "ПН".equals(p.getPaymentType().getCode()) || "ФСЗН".equals(p.getPaymentType().getCode()))
@@ -777,13 +855,14 @@ public class AccountantController {
                 paymentService.deletePayment(tax.getId());
             }
 
-            // Пересчитываем налоги
             taxCalculationService.calculateAndSaveTaxes(employee, month, year);
 
-            redirectAttributes.addFlashAttribute("success", "Налоги пересчитаны для " + employee.getFullName());
+            redirectAttributes.addFlashAttribute("success",
+                    "Налоги для " + employee.getFullName() + " успешно пересчитаны");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка пересчета налогов: " + e.getMessage());
         }
 
         return "redirect:/accountant/deductions?month=" + month + "&year=" + year;
@@ -799,10 +878,33 @@ public class AccountantController {
                     .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
 
             taxCalculationService.calculateAndSaveTaxes(employee, month, year);
-            redirectAttributes.addFlashAttribute("success", "Налоги рассчитаны для сотрудника");
+            redirectAttributes.addFlashAttribute("success",
+                    "Налоги для " + employee.getFullName() + " успешно рассчитаны");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета налогов: " + e.getMessage());
+        }
+
+        return "redirect:/accountant/deductions?month=" + month + "&year=" + year;
+    }
+
+    @PostMapping("/deductions/delete-taxes")
+    public String deleteTaxes(@RequestParam Integer employeeId,
+                              @RequestParam Integer month,
+                              @RequestParam Integer year,
+                              RedirectAttributes redirectAttributes) {
+        try {
+            Employee employee = employeeService.getEmployeeById(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Сотрудник не найден"));
+
+            taxCalculationService.deleteTaxes(employee, month, year);
+            redirectAttributes.addFlashAttribute("success",
+                    "Налоги для " + employee.getFullName() + " успешно удалены");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка удаления налогов: " + e.getMessage());
         }
 
         return "redirect:/accountant/deductions?month=" + month + "&year=" + year;
@@ -835,7 +937,6 @@ public class AccountantController {
                     FinalSalaryInfo info = new FinalSalaryInfo();
                     info.setEmployee(employee);
 
-                    // Рассчитываем зарплату
                     FinalSalaryCalculationService.FinalSalaryResult result =
                             finalSalaryCalculationService.calculateFinalSalaryForEmployee(employee, month, year);
 
@@ -844,18 +945,16 @@ public class AccountantController {
                     info.setNetSalary(result.getNetSalary());
                     info.setPayments(result.getPayments());
 
-                    // Проверяем, рассчитана ли уже итоговая зарплата
-                    info.setFinalSalaryCalculated(
-                            finalSalaryCalculationService.isFinalSalaryCalculated(employee, month, year));
+                    Optional<SalaryPayment> finalSalary = finalSalaryCalculationService.getFinalSalaryPayment(employee, month, year);
+                    info.setFinalSalaryCalculated(finalSalary.isPresent());
+                    info.setFinalSalaryPayment(finalSalary.orElse(null));
 
-                    // Проверяем, есть ли начисления
                     info.setHasPayments(!result.getPayments().isEmpty());
 
                     return info;
                 })
                 .toList();
 
-        // Получаем общую статистику
         FinalSalaryCalculationService.FinalSalarySummary summary =
                 finalSalaryCalculationService.getFinalSalarySummary(month, year);
 
@@ -888,7 +987,6 @@ public class AccountantController {
 
             finalSalaryCalculationService.calculateAndSaveFinalSalary(employee, month, year);
 
-            // Получаем результат для отображения суммы
             FinalSalaryCalculationService.FinalSalaryResult result =
                     finalSalaryCalculationService.calculateFinalSalaryForEmployee(employee, month, year);
 
@@ -897,7 +995,8 @@ public class AccountantController {
                             result.getNetSalary() + " руб. к выплате");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка расчета итоговой зарплаты: " + e.getMessage());
         }
 
         return "redirect:/accountant/final-salary?month=" + month + "&year=" + year;
@@ -914,13 +1013,33 @@ public class AccountantController {
                     "Итоговая зарплата рассчитана для " + calculatedCount + " сотрудников");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка пакетного расчета итоговой зарплаты: " + e.getMessage());
         }
 
         return "redirect:/accountant/final-salary?month=" + month + "&year=" + year;
     }
 
-    // В AccountantController добавим эти методы
+    @PostMapping("/final-salary/{id}/delete")
+    public String deleteFinalSalary(@PathVariable Integer id,
+                                    @RequestParam Integer month,
+                                    @RequestParam Integer year,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            SalaryPayment salaryPayment = salaryPaymentRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Расчет зарплаты не найден"));
+
+            finalSalaryCalculationService.deleteFinalSalary(salaryPayment.getEmployee(), month, year);
+            redirectAttributes.addFlashAttribute("success",
+                    "Итоговая зарплата для " + salaryPayment.getEmployee().getFullName() + " успешно удалена");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка удаления итоговой зарплаты: " + e.getMessage());
+        }
+
+        return "redirect:/accountant/final-salary?month=" + month + "&year=" + year;
+    }
 
     @GetMapping("/reports")
     public String reportsPage(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
@@ -938,10 +1057,8 @@ public class AccountantController {
         List<Department> departments = departmentService.getAllDepartments();
         List<Employee> employees = employeeService.getActiveEmployees();
 
-        // Получаем статистику для отображения
         ReportStatistics statistics = getReportStatistics(month, year);
 
-        // Получаем недавно рассчитанные зарплаты
         List<SalaryPayment> recentSalaries = salaryPaymentRepository.findByMonthAndYear(month, year)
                 .stream()
                 .limit(10)
@@ -1012,8 +1129,6 @@ public class AccountantController {
         }
     }
 
-    // Добавим эти методы в AccountantController
-
     @GetMapping("/reports/detailed-salary-excel")
     public ResponseEntity<byte[]> generateDetailedSalaryExcel(@RequestParam Integer month,
                                                               @RequestParam Integer year) {
@@ -1037,8 +1152,7 @@ public class AccountantController {
                                                                 @RequestParam Integer month,
                                                                 @RequestParam Integer year) {
         try {
-            // Можно создать специализированный метод для отчетов по отделам
-            byte[] excelBytes = reportService.generateSalaryReportExcel(month, year); // временно
+            byte[] excelBytes = reportService.generateSalaryReportExcel(month, year);
 
             String filename = "department_salary_" + departmentId + "_" + month + "_" + year + ".xlsx";
 
@@ -1092,82 +1206,5 @@ public class AccountantController {
         }
 
         return new ReportStatistics(totalEmployees, totalAccrued, totalDeducted, totalNetSalary);
-    }
-
-    @Data
-    public static class EmployeeBonusInfo {
-        private Employee employee;
-        private List<Payment> existingBonuses;
-        private BigDecimal totalBonuses;
-        private boolean hasEnterpriseBonus;
-        private boolean hasItrBonus;
-        private boolean hasBaseSalary;
-        private BigDecimal enterpriseBonusAmount = BigDecimal.ZERO;
-        private BigDecimal itrBonusAmount = BigDecimal.ZERO;
-
-        public boolean hasBonuses() {
-            return existingBonuses != null && !existingBonuses.isEmpty();
-        }
-
-        public boolean canCalculateItrBonus() {
-            return hasBaseSalary && !hasItrBonus;
-        }
-    }
-
-    @Data
-    public static class EmployeeDeductionInfo {
-        private Employee employee;
-        private List<Payment> existingDeductions;
-        private BigDecimal totalDeductions = BigDecimal.ZERO;
-        private BigDecimal totalAccruals = BigDecimal.ZERO;
-        private BigDecimal calculatedIncomeTax = BigDecimal.ZERO;
-        private BigDecimal calculatedSocialTax = BigDecimal.ZERO;
-        private boolean hasIncomeTax;
-        private boolean hasSocialTax;
-        private boolean hasBaseSalary;
-        private boolean hasBonuses;
-
-        public boolean hasDeductions() {
-            return existingDeductions != null && !existingDeductions.isEmpty();
-        }
-
-        public boolean canCalculateTaxes() {
-            return hasBaseSalary && hasBonuses && !hasIncomeTax && !hasSocialTax && totalAccruals.compareTo(BigDecimal.ZERO) > 0;
-        }
-
-        public boolean hasCalculatedTaxes() {
-            return hasIncomeTax && hasSocialTax;
-        }
-    }
-
-    @Data
-    public static class FinalSalaryInfo {
-        private Employee employee;
-        private BigDecimal totalAccrued = BigDecimal.ZERO;
-        private BigDecimal totalDeducted = BigDecimal.ZERO;
-        private BigDecimal netSalary = BigDecimal.ZERO;
-        private List<Payment> payments;
-        private boolean finalSalaryCalculated;
-        private boolean hasPayments;
-
-        public boolean canCalculateFinalSalary() {
-            return hasPayments && !finalSalaryCalculated && totalAccrued.compareTo(BigDecimal.ZERO) > 0;
-        }
-    }
-
-    @Data
-    public static class ReportStatistics {
-        private long totalEmployees;
-        private BigDecimal totalAccrued;
-        private BigDecimal totalDeducted;
-        private BigDecimal totalNetSalary;
-
-        public ReportStatistics(long totalEmployees, BigDecimal totalAccrued,
-                                BigDecimal totalDeducted, BigDecimal totalNetSalary) {
-            this.totalEmployees = totalEmployees;
-            this.totalAccrued = totalAccrued;
-            this.totalDeducted = totalDeducted;
-            this.totalNetSalary = totalNetSalary;
-        }
     }
 }

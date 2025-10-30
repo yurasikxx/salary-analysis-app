@@ -20,6 +20,7 @@ public class TaxCalculationService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentTypeRepository paymentTypeRepository;
+    private final FinalSalaryCalculationService finalSalaryCalculationService;
 
     @Transactional
     public void calculateAndSaveTaxes(Employee employee, Integer month, Integer year) {
@@ -79,7 +80,6 @@ public class TaxCalculationService {
 
         for (Employee employee : employees) {
             try {
-                // Проверяем, есть ли начисления для сотрудника
                 List<Payment> accruals = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year)
                         .stream()
                         .filter(p -> "accrual".equals(p.getPaymentType().getCategory()))
@@ -96,6 +96,19 @@ public class TaxCalculationService {
         }
 
         log.info("Автоматический расчет налогов завершен: {} сотрудников", calculatedCount);
+    }
+
+    @Transactional
+    public void deleteTaxes(Employee employee, Integer month, Integer year) {
+        validateCanDeleteTaxes(employee, month, year);
+
+        List<Payment> taxes = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year)
+                .stream()
+                .filter(p -> "ПН".equals(p.getPaymentType().getCode()) ||
+                        "ФСЗН".equals(p.getPaymentType().getCode()))
+                .toList();
+
+        paymentRepository.deleteAll(taxes);
     }
 
     public BigDecimal calculateTotalAccrualsForEmployee(Employee employee, Integer month, Integer year) {
@@ -150,5 +163,11 @@ public class TaxCalculationService {
                 taxName, totalAccruals,
                 taxName.contains("13") ? 13.0 : 1.0,
                 taxAmount);
+    }
+
+    private void validateCanDeleteTaxes(Employee employee, Integer month, Integer year) {
+        if (finalSalaryCalculationService.isFinalSalaryCalculated(employee, month, year)) {
+            throw new RuntimeException("Нельзя удалять налоги после расчета финальной зарплаты");
+        }
     }
 }

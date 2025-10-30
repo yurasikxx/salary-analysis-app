@@ -3,17 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Отпускные и больничные - Бухгалтер</title>
-    <style>
-        .calculation-card {
-            border-left: 4px solid #0dcaf0;
-        }
-        .sick-leave-card {
-            border-left: 4px solid #ffc107;
-        }
-        .vacation-card {
-            border-left: 4px solid #198754;
-        }
-    </style>
 </head>
 <body th:replace="~{layout :: html(
     title='Расчет отпускных и больничных',
@@ -120,7 +109,8 @@
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">
-                <i class="bi bi-list-ul"></i> Расчет отпускных и больничных за <span th:text="${russianMonth + ' ' + year}"></span>
+                <i class="bi bi-list-ul"></i> Расчет отпускных и больничных за <span
+                    th:text="${russianMonth + ' ' + year}"></span>
             </h5>
             <small class="text-muted">Расчет основан на данных табеля учета рабочего времени</small>
         </div>
@@ -149,7 +139,6 @@
                         </td>
                         <td th:text="${info.employee.position.title}"></td>
 
-                        <!-- Больничные -->
                         <td class="text-center">
                             <span th:if="${info.sickLeaveDays > 0}"
                                   th:text="${info.sickLeaveDays} + ' дн.'"
@@ -158,7 +147,6 @@
                             <span th:if="${info.sickLeaveDays == 0}" class="text-muted">-</span>
                         </td>
 
-                        <!-- Отпуск -->
                         <td class="text-center">
                             <span th:if="${info.vacationDays > 0}"
                                   th:text="${info.vacationDays} + ' дн.'"
@@ -167,7 +155,6 @@
                             <span th:if="${info.vacationDays == 0}" class="text-muted">-</span>
                         </td>
 
-                        <!-- Дневная ставка -->
                         <td class="text-end">
                             <span th:if="${info.hasBaseSalary}"
                                   th:text="${info.dailyRate} + ' руб.'"
@@ -176,13 +163,13 @@
                             <span th:if="${not info.hasBaseSalary}" class="text-muted">-</span>
                         </td>
 
-                        <!-- Сумма больничных -->
                         <td class="text-end">
-                            <span th:if="${info.sickLeaveAmount > 0}"
+                            <span th:if="${info.hasSickLeavePayment && info.sickLeaveAmount > 0}"
                                   th:text="${info.sickLeaveAmount} + ' руб.'"
                                   class="fw-bold text-warning">
                             </span>
-                            <span th:if="${info.sickLeaveAmount == 0}" class="text-muted">-</span>
+                            <span th:if="${info.sickLeaveAmount == 0 || !info.hasSickLeavePayment}"
+                                  class="text-muted">-</span>
                             <div th:if="${info.hasSickLeavePayment}" class="small">
                                 <span class="text-success">
                                     <i class="bi bi-check-lg"></i> Начислено
@@ -202,13 +189,13 @@
                             </div>
                         </td>
 
-                        <!-- Сумма отпускных -->
                         <td class="text-end">
-                            <span th:if="${info.vacationAmount > 0}"
+                            <span th:if="${info.hasVacationPayment && info.vacationAmount > 0}"
                                   th:text="${info.vacationAmount} + ' руб.'"
                                   class="fw-bold text-success">
                             </span>
-                            <span th:if="${info.vacationAmount == 0}" class="text-muted">-</span>
+                            <span th:if="${info.vacationAmount == 0 || !info.hasVacationPayment}"
+                                  class="text-muted">-</span>
                             <div th:if="${info.hasVacationPayment}" class="small">
                                 <span class="text-success">
                                     <i class="bi bi-check-lg"></i> Начислено
@@ -228,7 +215,6 @@
                             </div>
                         </td>
 
-                        <!-- Статус -->
                         <td class="text-center">
                             <span th:if="${info.hasSickLeavePayment or info.hasVacationPayment}"
                                   class="badge bg-success">
@@ -241,12 +227,12 @@
                                   class="badge bg-warning">
                                 Ожидает расчета
                             </span>
-                            <span th:if="${info.hasBaseSalary and not info.hasAnyCalculation()}" class="badge bg-secondary">
+                            <span th:if="${info.hasBaseSalary and not info.hasAnyCalculation()}"
+                                  class="badge bg-secondary">
                                 Нет данных
                             </span>
                         </td>
 
-                        <!-- Действия -->
                         <td class="text-center">
                             <div class="btn-group-vertical btn-group-sm">
                                 <!-- Расчет больничных -->
@@ -266,7 +252,6 @@
                                     </button>
                                 </form>
 
-                                <!-- Расчет отпускных -->
                                 <form th:if="${info.canCalculateVacation()}"
                                       th:action="@{/accountant/vacation-sickleave/calculate-vacation}"
                                       method="post"
@@ -283,7 +268,6 @@
                                     </button>
                                 </form>
 
-                                <!-- Расчет всего -->
                                 <form th:if="${info.hasAnyCalculation()}"
                                       th:action="@{/accountant/vacation-sickleave/calculate-all}"
                                       method="post"
@@ -303,7 +287,8 @@
                                 <small th:if="${not info.hasBaseSalary}" class="text-muted">
                                     Оклад не рассчитан
                                 </small>
-                                <small th:if="${info.hasBaseSalary and not info.hasAnyCalculation()}" class="text-muted">
+                                <small th:if="${info.hasBaseSalary and not info.hasAnyCalculation()}"
+                                       class="text-muted">
                                     Нет дней для расчета
                                 </small>
                             </div>

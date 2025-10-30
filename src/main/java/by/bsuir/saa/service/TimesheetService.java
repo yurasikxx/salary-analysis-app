@@ -1,6 +1,8 @@
 package by.bsuir.saa.service;
 
 import by.bsuir.saa.entity.*;
+import by.bsuir.saa.repository.EmployeeRepository;
+import by.bsuir.saa.repository.PaymentRepository;
 import by.bsuir.saa.repository.TimesheetRepository;
 import by.bsuir.saa.repository.TimesheetEntryRepository;
 import org.springframework.stereotype.Service;
@@ -19,13 +21,19 @@ public class TimesheetService {
     private final TimesheetRepository timesheetRepository;
     private final TimesheetEntryRepository timesheetEntryRepository;
     private final MarkTypeService markTypeService;
+    private final PaymentRepository paymentRepository;
+    private final EmployeeRepository employeeRepository;
 
     public TimesheetService(TimesheetRepository timesheetRepository,
                             TimesheetEntryRepository timesheetEntryRepository,
-                            MarkTypeService markTypeService) {
+                            MarkTypeService markTypeService,
+                            PaymentRepository paymentRepository,
+                            EmployeeRepository employeeRepository) {
         this.timesheetRepository = timesheetRepository;
         this.timesheetEntryRepository = timesheetEntryRepository;
         this.markTypeService = markTypeService;
+        this.paymentRepository = paymentRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     public Optional<Timesheet> getTimesheetById(Integer id) {
@@ -179,6 +187,124 @@ public class TimesheetService {
                         entry -> entry.getMarkType().getCode(),
                         Collectors.counting()
                 ));
+    }
+
+    @Transactional
+    public void unconfirmTimesheet(Integer timesheetId) {
+        Timesheet timesheet = timesheetRepository.findById(timesheetId)
+                .orElseThrow(() -> new RuntimeException("Табель не найден"));
+
+        if (timesheet.getStatus() != Timesheet.TimesheetStatus.CONFIRMED) {
+            throw new RuntimeException("Табель не подтвержден, отмена подтверждения невозможна");
+        }
+
+        if (hasCalculatedPayments(timesheet.getEmployee(), timesheet.getMonth(), timesheet.getYear())) {
+            List<Payment> payments = paymentRepository.findByEmployeeAndMonthAndYear(
+                    timesheet.getEmployee(), timesheet.getMonth(), timesheet.getYear());
+
+            String paymentTypes = payments.stream()
+                    .filter(p -> "accrual".equals(p.getPaymentType().getCategory()))
+                    .map(p -> p.getPaymentType().getName())
+                    .collect(Collectors.joining(", "));
+
+            throw new RuntimeException("Невозможно отменить подтверждение табеля. " +
+                    "У сотрудника уже есть рассчитанные начисления: " + paymentTypes +
+                    ". Сначала удалите эти начисления.");
+        }
+
+        timesheet.setStatus(Timesheet.TimesheetStatus.DRAFT);
+        timesheet.setConfirmedBy(null);
+        timesheet.setConfirmedAt(null);
+        timesheetRepository.save(timesheet);
+    }
+
+    @Transactional
+    public void fillFullMonthForAll(Integer month, Integer year) {
+        List<Employee> activeEmployees = employeeRepository.findByTerminationDateIsNull();
+        int filledCount = 0;
+
+        for (Employee employee : activeEmployees) {
+            Optional<Timesheet> timesheetOpt = getTimesheet(employee, month, year);
+            if (timesheetOpt.isPresent()) {
+                Timesheet timesheet = timesheetOpt.get();
+                if (timesheet.getTimesheetEntries().isEmpty() &&
+                        timesheet.getStatus() != Timesheet.TimesheetStatus.CONFIRMED) {
+                    fillFullMonth(timesheet);
+                    filledCount++;
+                }
+            }
+        }
+    }
+
+    @Transactional
+    public void fillMonthWithVacation(Integer timesheetId) {
+        Timesheet timesheet = timesheetRepository.findById(timesheetId)
+                .orElseThrow(() -> new RuntimeException("Табель не найден"));
+
+        if (timesheet.getStatus() == Timesheet.TimesheetStatus.CONFIRMED) {
+            throw new RuntimeException("Невозможно редактировать подтвержденный табель");
+        }
+
+        timesheetEntryRepository.deleteByTimesheet(timesheet);
+
+        List<LocalDate> monthDays = getDaysInMonth(timesheet.getYear(), timesheet.getMonth());
+        MarkType vacationMarkType = markTypeService.getMarkTypeByCode("О")
+                .orElseThrow(() -> new RuntimeException("Тип отметки 'Отпуск' не найден"));
+
+        for (LocalDate day : monthDays) {
+            TimesheetEntry entry = new TimesheetEntry();
+            entry.setTimesheet(timesheet);
+            entry.setDate(day);
+            entry.setMarkType(vacationMarkType);
+            entry.setHoursWorked(BigDecimal.ZERO); // В отпуске часов не отрабатывается
+
+            timesheetEntryRepository.save(entry);
+        }
+
+        updateTotalHours(timesheet);
+    }
+
+    @Transactional
+    public void fillMonthWithSickLeave(Integer timesheetId) {
+        Timesheet timesheet = timesheetRepository.findById(timesheetId)
+                .orElseThrow(() -> new RuntimeException("Табель не найден"));
+
+        if (timesheet.getStatus() == Timesheet.TimesheetStatus.CONFIRMED) {
+            throw new RuntimeException("Невозможно редактировать подтвержденный табель");
+        }
+
+        timesheetEntryRepository.deleteByTimesheet(timesheet);
+
+        List<LocalDate> monthDays = getDaysInMonth(timesheet.getYear(), timesheet.getMonth());
+        MarkType sickLeaveMarkType = markTypeService.getMarkTypeByCode("Б")
+                .orElseThrow(() -> new RuntimeException("Тип отметки 'Больничный' не найден"));
+
+        for (LocalDate day : monthDays) {
+            TimesheetEntry entry = new TimesheetEntry();
+            entry.setTimesheet(timesheet);
+            entry.setDate(day);
+            entry.setMarkType(sickLeaveMarkType);
+            entry.setHoursWorked(BigDecimal.ZERO);
+
+            timesheetEntryRepository.save(entry);
+        }
+
+        updateTotalHours(timesheet);
+    }
+
+    private boolean hasCalculatedPayments(Employee employee, Integer month, Integer year) {
+        List<Payment> payments = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+
+        return payments.stream()
+                .anyMatch(p -> "accrual".equals(p.getPaymentType().getCategory()) &&
+                        ("ОКЛ".equals(p.getPaymentType().getCode()) ||
+                                "ОТП".equals(p.getPaymentType().getCode()) ||
+                                "БОЛ".equals(p.getPaymentType().getCode()) ||
+                                "ПРЕД".equals(p.getPaymentType().getCode()) ||
+                                "ИТР".equals(p.getPaymentType().getCode()) ||
+                                "ПХД".equals(p.getPaymentType().getCode()) ||
+                                "ПСС".equals(p.getPaymentType().getCode()) ||
+                                "СТАЖ".equals(p.getPaymentType().getCode())));
     }
 
     private void updateTotalHours(Timesheet timesheet) {

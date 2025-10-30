@@ -32,7 +32,7 @@
         <input type="hidden" name="year" th:value="${year}">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
         <button type="submit" class="btn btn-success">
-            <i class="bi bi-calculator"></i> Рассчитать налоги всё
+            <i class="bi bi-calculator"></i> Рассчитать все налоги
         </button>
     </form>
 </div>
@@ -271,6 +271,27 @@
                                 </a>
                                 <small th:if="${not info.hasBaseSalary}" class="text-muted">
                                     Оклад не рассчитан
+                                </small>
+                            </div>
+                            <div th:if="${info.hasCalculatedTaxes()}"
+                                 class="p-2 mt-2 border border-info bg-light rounded">
+                                <small class="text-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    Налоги рассчитаны
+                                    <form th:action="@{/accountant/deductions/delete-taxes}"
+                                          method="post" class="d-inline ms-2">
+                                        <input type="hidden" name="employeeId" th:value="${info.employee.id}">
+                                        <input type="hidden" name="month" th:value="${month}">
+                                        <input type="hidden" name="year" th:value="${year}">
+                                        <input type="hidden" th:name="${_csrf.parameterName}"
+                                               th:value="${_csrf.token}"/>
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-danger"
+                                                th:attr="data-employee-name=${info.employee.fullName}"
+                                                onclick="return confirm('Удалить налоги для ' + this.getAttribute('data-employee-name') + '?')">
+                                            Удалить налоги
+                                        </button>
+                                    </form>
                                 </small>
                             </div>
                         </td>

@@ -238,18 +238,32 @@
                                         <i class="bi bi-calculator"></i> Рассчитать
                                     </button>
                                 </form>
-                                <span th:if="${info.finalSalaryCalculated}" class="text-success small">
-                                    <i class="bi bi-check-lg"></i> Готово
-                                </span>
+
+                                <div th:if="${info.finalSalaryCalculated}" class="btn-group-vertical">
+                                    <form th:action="@{/accountant/final-salary/{id}/delete(id=${info.getFinalSalaryPayment().id})}"
+                                          method="post" class="d-inline mb-1">
+                                        <input type="hidden" name="month" th:value="${month}">
+                                        <input type="hidden" name="year" th:value="${year}">
+                                        <input type="hidden" th:name="${_csrf.parameterName}"
+                                               th:value="${_csrf.token}"/>
+                                        <button type="submit"
+                                                class="btn btn-outline-danger btn-sm"
+                                                th:attr="data-employee-name=${info.employee.fullName}"
+                                                onclick="return confirm('Удалить итоговую зарплату для ' + this.getAttribute('data-employee-name') + '?')">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </button>
+                                    </form>
+
+                                    <a th:href="@{/accountant/reports/payslip-pdf(employeeId=${info.employee.id}, month=${month}, year=${year})}"
+                                       class="btn btn-outline-info btn-sm"
+                                       target="_blank">
+                                        <i class="bi bi-download"></i> Листок
+                                    </a>
+                                </div>
+
                                 <span th:if="${not info.hasPayments}" class="text-muted small">
                                     Нет начислений
                                 </span>
-                                <a th:if="${info.finalSalaryCalculated}"
-                                   th:href="@{/accountant/reports/payslip-pdf(employeeId=${info.employee.id}, month=${month}, year=${year})}"
-                                   class="btn btn-outline-info btn-sm"
-                                   target="_blank">
-                                    <i class="bi bi-download"></i> Листок
-                                </a>
                             </div>
                         </td>
                     </tr>

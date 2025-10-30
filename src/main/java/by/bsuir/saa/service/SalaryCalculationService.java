@@ -53,13 +53,7 @@ public class SalaryCalculationService {
 
     @Transactional
     public void calculateAndSaveBaseSalary(Employee employee, Integer month, Integer year) {
-        if (hasBonuses(employee, month, year)) {
-            throw new RuntimeException("Нельзя пересчитывать оклад при наличии надбавок");
-        }
-
-        if (hasTaxes(employee, month, year)) {
-            throw new RuntimeException("Нельзя пересчитывать оклад после начисления налогов");
-        }
+        validateCanCalculateOrRecalculateSalary(employee, month, year);
 
         BigDecimal baseSalary = calculateBaseSalary(employee, month, year);
         PaymentType salaryPaymentType = getSalaryPaymentType();
@@ -87,6 +81,32 @@ public class SalaryCalculationService {
         }
 
         return calculatedCount;
+    }
+
+    @Transactional
+    public void recalculateBaseSalary(Employee employee, Integer month, Integer year) {
+        validateCanCalculateOrRecalculateSalary(employee, month, year);
+
+        PaymentType salaryPaymentType = getSalaryPaymentType();
+        Optional<Payment> existingSalary = paymentRepository.findByEmployeeAndMonthAndYearAndPaymentType(
+                employee, month, year, salaryPaymentType);
+
+        existingSalary.ifPresent(paymentRepository::delete);
+
+        BigDecimal baseSalary = calculateBaseSalary(employee, month, year);
+        Payment payment = createPayment(employee, month, year, salaryPaymentType, baseSalary);
+        paymentRepository.save(payment);
+    }
+
+    @Transactional
+    public void deleteBaseSalary(Employee employee, Integer month, Integer year) {
+        validateCanDeleteSalary(employee, month, year);
+
+        PaymentType salaryPaymentType = getSalaryPaymentType();
+        Optional<Payment> existingSalary = paymentRepository.findByEmployeeAndMonthAndYearAndPaymentType(
+                employee, month, year, salaryPaymentType);
+
+        existingSalary.ifPresent(paymentRepository::delete);
     }
 
     public long getCalculatedEmployeesCount(Integer month, Integer year) {
@@ -191,5 +211,20 @@ public class SalaryCalculationService {
         return payments.stream()
                 .anyMatch(p -> "accrual".equals(p.getPaymentType().getCategory()) &&
                         !"ОКЛ".equals(p.getPaymentType().getCode()));
+    }
+
+    private void validateCanCalculateOrRecalculateSalary(Employee employee, Integer month, Integer year) {
+        if (hasTaxes(employee, month, year)) {
+            throw new RuntimeException("Нельзя рассчитывать/пересчитывать оклад после начисления налогов");
+        }
+    }
+
+    private void validateCanDeleteSalary(Employee employee, Integer month, Integer year) {
+        if (hasBonuses(employee, month, year)) {
+            throw new RuntimeException("Нельзя удалять оклад при наличии надбавок");
+        }
+        if (hasTaxes(employee, month, year)) {
+            throw new RuntimeException("Нельзя удалять оклад после начисления налогов");
+        }
     }
 }

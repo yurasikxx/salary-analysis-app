@@ -334,7 +334,7 @@ public class HrController {
             return "redirect:/hr/timesheets/%d/edit".formatted(timesheet.getId());
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Ошибка создания табеля: " + e.getMessage());
             return "redirect:/hr/timesheets/create?month=%d&year=%d".formatted(month, year);
         }
     }
@@ -356,12 +356,12 @@ public class HrController {
 
             redirectAttributes.addFlashAttribute("success",
                     "Создано " + createdCount + " табелей за " + MonthUtil.getRussianMonthName(month) + " " + year);
-            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
+            redirectAttributes.addFlashAttribute("error", "Ошибка пакетного создания табелей: " + e.getMessage());
         }
+
+        return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
     }
 
     @GetMapping("/timesheets/{id}/edit")
@@ -424,12 +424,12 @@ public class HrController {
             timesheetService.saveTimesheetEntries(id, dayEntries);
 
             redirectAttributes.addFlashAttribute("success", "Табель успешно сохранен");
-            return "redirect:/hr/timesheets/%d/edit".formatted(id);
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Ошибка при сохранении: " + e.getMessage());
-            return "redirect:/hr/timesheets/%d/edit".formatted(id);
         }
+
+        return "redirect:/hr/timesheets/%d/edit".formatted(id);
     }
 
     @PostMapping("/timesheets/{id}/fill-full-month")
@@ -444,13 +444,13 @@ public class HrController {
             }
 
             timesheetService.fillFullMonth(timesheet);
-            redirectAttributes.addFlashAttribute("success", "Табель заполнен по полному месяцу");
-            return "redirect:/hr/timesheets/%d/edit".formatted(id);
+            redirectAttributes.addFlashAttribute("success", "Табель успешно заполнен по полному месяцу");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Ошибка: " + e.getMessage());
-            return "redirect:/hr/timesheets/%d/edit".formatted(id);
+            redirectAttributes.addFlashAttribute("error", "Ошибка заполнения табеля: " + e.getMessage());
         }
+
+        return "redirect:/hr/timesheets/%d/edit".formatted(id);
     }
 
     @PostMapping("/timesheets/{id}/confirm")
@@ -463,13 +463,13 @@ public class HrController {
 
             timesheetService.confirmTimesheet(id, currentUser);
 
-            redirectAttributes.addFlashAttribute("success", "Табель подтвержден");
-            return "redirect:/hr/timesheets";
+            redirectAttributes.addFlashAttribute("success", "Табель успешно подтвержден");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/hr/timesheets";
+            redirectAttributes.addFlashAttribute("error", "Ошибка подтверждения табеля: " + e.getMessage());
         }
+
+        return "redirect:/hr/timesheets";
     }
 
     @PostMapping("/timesheets/batch-confirm")
@@ -493,12 +493,12 @@ public class HrController {
 
             redirectAttributes.addFlashAttribute("success",
                     "Подтверждено " + confirmedCount + " табелей за " + MonthUtil.getRussianMonthName(month) + " " + year);
-            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
+            redirectAttributes.addFlashAttribute("error", "Ошибка пакетного подтверждения табелей: " + e.getMessage());
         }
+
+        return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
     }
 
     @PostMapping("/timesheets/{id}/delete")
@@ -518,13 +518,78 @@ public class HrController {
             timesheetService.deleteTimesheetEntries(timesheet);
             timesheetService.deleteTimesheet(id);
 
-            redirectAttributes.addFlashAttribute("success", "Табель удален");
-            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
+            redirectAttributes.addFlashAttribute("success", "Табель успешно удален");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
+            redirectAttributes.addFlashAttribute("error", "Ошибка удаления табеля: " + e.getMessage());
         }
+
+        return "redirect:/hr/timesheets?month=%d&year=%d".formatted(month, year);
+    }
+
+    @PostMapping("/timesheets/{id}/unconfirm")
+    public String unconfirmTimesheet(@PathVariable Integer id,
+                                     @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().monthValue}") Integer month,
+                                     @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") Integer year,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            timesheetService.unconfirmTimesheet(id);
+            redirectAttributes.addFlashAttribute("success", "Подтверждение табеля успешно отменено");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Ошибка отмены подтверждения табеля: " + e.getMessage());
+        }
+
+        return "redirect:/hr/timesheets?month=" + month + "&year=" + year;
+    }
+
+    @PostMapping("/timesheets/fill-full-month-all")
+    public String fillFullMonthForAll(@RequestParam Integer month,
+                                      @RequestParam Integer year,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            timesheetService.fillFullMonthForAll(month, year);
+            redirectAttributes.addFlashAttribute("success",
+                    "Табели успешно заполнены по полному месяцу для всех сотрудников с пустыми табелями");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка заполнения табелей: " + e.getMessage());
+        }
+
+        return "redirect:/hr/timesheets?month=" + month + "&year=" + year;
+    }
+
+    @PostMapping("/timesheets/{id}/fill-vacation")
+    public String fillMonthWithVacation(@PathVariable Integer id,
+                                        RedirectAttributes redirectAttributes) {
+        try {
+            timesheetService.fillMonthWithVacation(id);
+            redirectAttributes.addFlashAttribute("success",
+                    "Табель успешно заполнен отпуском");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка заполнения табеля отпуском: " + e.getMessage());
+        }
+
+        return "redirect:/hr/timesheets/%d/edit".formatted(id);
+    }
+
+    @PostMapping("/timesheets/{id}/fill-sickleave")
+    public String fillMonthWithSickLeave(@PathVariable Integer id,
+                                         RedirectAttributes redirectAttributes) {
+        try {
+            timesheetService.fillMonthWithSickLeave(id);
+            redirectAttributes.addFlashAttribute("success",
+                    "Табель успешно заполнен больничным");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка заполнения табеля больничным: " + e.getMessage());
+        }
+
+        return "redirect:/hr/timesheets/%d/edit".formatted(id);
     }
 
     private List<LocalDate> getDaysInMonth(int year, int month) {

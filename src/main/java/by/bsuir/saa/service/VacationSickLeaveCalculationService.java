@@ -75,7 +75,6 @@ public class VacationSickLeaveCalculationService {
         validateBaseSalaryCalculated(employee, month, year);
         validateNoExistingPayment(employee, month, year, "БОЛ");
 
-        // Проверяем, не рассчитаны ли уже налоги
         if (taxCalculationService.hasTaxesCalculated(employee, month, year)) {
             throw new RuntimeException("Нельзя рассчитывать больничные после начисления налогов");
         }
@@ -157,6 +156,16 @@ public class VacationSickLeaveCalculationService {
         return calculatedCount;
     }
 
+    @Transactional
+    public void deleteVacationSickLeavePayment(Integer paymentId, Integer month, Integer year) {
+        Payment payment = paymentService.getPaymentById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Платеж не найден"));
+
+        validateCanDeleteVacationSickLeave(payment.getEmployee(), month, year);
+
+        paymentService.deletePayment(paymentId);
+    }
+
     public List<Employee> getEmployeesWithConfirmedTimesheets(Integer month, Integer year) {
         return timesheetRepository.findByMonthAndYearWithEntries(month, year).stream()
                 .filter(timesheet -> timesheet.getStatus() == Timesheet.TimesheetStatus.CONFIRMED)
@@ -227,6 +236,12 @@ public class VacationSickLeaveCalculationService {
     private String buildVacationDescription(CalculationInfo info) {
         return String.format("Оплата отпуска: %d дн. × %.2f руб. × 150%% = %.2f руб.",
                 info.getVacationDays(), info.getDailyRate(), info.getVacationAmount());
+    }
+
+    private void validateCanDeleteVacationSickLeave(Employee employee, Integer month, Integer year) {
+        if (taxCalculationService.hasTaxesCalculated(employee, month, year)) {
+            throw new RuntimeException("Нельзя удалять отпускные/больничные после начисления налогов");
+        }
     }
 
     @Data

@@ -201,7 +201,7 @@
                                 </div>
                             </div>
 
-                            <div th:if="${info.hasBaseSalary and not info.hasSeniorityBonus and info.seniorityYears >= 1}"
+                            <div th:if="${info.canCalculateAutomaticBonuses()}"
                                  class="p-2 mt-2 border border-info bg-light rounded">
                                 <small>
                                     <i class="bi bi-calculator"></i>

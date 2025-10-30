@@ -56,13 +56,11 @@ public class FinalSalaryCalculationService {
     public void calculateAndSaveFinalSalary(Employee employee, Integer month, Integer year) {
         FinalSalaryResult result = calculateFinalSalaryForEmployee(employee, month, year);
 
-        // Проверяем, не рассчитана ли уже итоговая зарплата
         Optional<SalaryPayment> existingSalary = salaryPaymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
         if (existingSalary.isPresent()) {
             throw new RuntimeException("Итоговая зарплата уже рассчитана для сотрудника " + employee.getFullName());
         }
 
-        // Проверяем, есть ли начисления
         if (result.getTotalAccrued().compareTo(BigDecimal.ZERO) == 0) {
             throw new RuntimeException("Нет начислений для расчета итоговой зарплаты для " + employee.getFullName());
         }
@@ -95,7 +93,6 @@ public class FinalSalaryCalculationService {
 
         for (Employee employee : employees) {
             try {
-                // Проверяем, не рассчитана ли уже итоговая зарплата
                 if (!isFinalSalaryCalculated(employee, month, year)) {
                     calculateAndSaveFinalSalary(employee, month, year);
                     calculatedCount++;
@@ -108,6 +105,17 @@ public class FinalSalaryCalculationService {
 
         log.info("Автоматический расчет итоговых зарплат завершен: {} сотрудников", calculatedCount);
         return calculatedCount;
+    }
+
+    @Transactional
+    public void deleteFinalSalary(Employee employee, Integer month, Integer year) {
+        Optional<SalaryPayment> salaryPayment = salaryPaymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+
+        salaryPayment.ifPresent(salaryPaymentRepository::delete);
+    }
+
+    public Optional<SalaryPayment> getFinalSalaryPayment(Employee employee, Integer month, Integer year) {
+        return salaryPaymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
     }
 
     public boolean isFinalSalaryCalculated(Employee employee, Integer month, Integer year) {
