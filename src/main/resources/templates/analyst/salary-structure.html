@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Структура заработной платы</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Анализ структуры заработной платы',
+    icon='bi-pie-chart',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-outline-success" onclick="refreshPage()">
+            <i class="bi bi-arrow-clockwise"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/salary-structure}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="monthEntry : ${@monthUtil.getRussianMonthsMap()}"
+                                th:value="${monthEntry.key}"
+                                th:selected="${month == monthEntry.key}"
+                                th:text="${monthEntry.value}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option th:each="y : ${#numbers.sequence(2023, 2026)}"
+                                th:value="${y}"
+                                th:selected="${year == y}"
+                                th:text="${y}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Сотрудник (опционально)</label>
+                    <select class="form-select" name="employeeId">
+                        <option value="">По предприятию</option>
+                        <option th:each="employee : ${employees}"
+                                th:value="${employee.id}"
+                                th:text="${employee.fullName + ' - ' + employee.department.name}"
+                                th:selected="${employeeId == employee.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${selectedEmployee}" class="card mb-4 bg-light">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="bi bi-person"></i> Анализ для сотрудника:
+                <span th:text="${selectedEmployee.fullName}"></span>
+            </h5>
+            <p class="card-text mb-0">
+                Должность: <span th:text="${selectedEmployee.position.title}"></span> |
+                Подразделение: <span th:text="${selectedEmployee.department.name}"></span>
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-pie-chart"></i> Структура начислений заработной платы
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                            <tr>
+                                <th>Вид начисления</th>
+                                <th class="text-end">Сумма</th>
+                                <th class="text-end">Доля</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="item : ${structureData}">
+                                <td th:text="${item.category}"></td>
+                                <td class="text-end fw-bold"
+                                    th:text="${#numbers.formatDecimal(item.amount, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                                <td class="text-end">
+                                    <span class="badge bg-info"
+                                          th:text="${#numbers.formatDecimal(item.percentage, 1, 1)} + '%'"></span>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="structureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(structureData)}" class="text-center text-muted py-5">
+                <i class="bi bi-pie-chart display-1"></i>
+                <h4 class="mt-3">Нет данных для анализа</h4>
+                <p>За выбранный период отсутствуют данные о начислениях</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        document.addEventListener('DOMContentLoaded', function() {
+            const structureData = /*[[${structureData}]]*/ [];
+            if (structureData && structureData.length > 0) {
+                initStructureChart(structureData);
+            }
+        });
+
+        function refreshPage() {
+            location.reload();
+        }
+
+        function initStructureChart(structureData) {
+            const ctx = document.getElementById('structureChart').getContext('2d');
+
+            const categories = structureData.map(item => item.category);
+            const amounts = structureData.map(item => item.amount);
+            const percentages = structureData.map(item => item.percentage);
+
+            const backgroundColors = categories.map((_, i) =>
+                `hsl(${i * 360 / categories.length}, 70%, 60%)`
+            );
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories.map((cat, i) =>
+                        `${cat} (${percentages[i].toFixed(1)}%)`
+                    ),
+                    datasets: [{
+                        data: amounts,
+                        backgroundColor: backgroundColors,
+                        borderColor: backgroundColors.map(color => color.replace('60%)', '40%)')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    return `${label}: ${value.toLocaleString('ru-RU')} руб.`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '50%'
+                }
+            });
+        }
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

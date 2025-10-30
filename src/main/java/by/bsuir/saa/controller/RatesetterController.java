@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -136,6 +137,8 @@ public class RatesetterController {
                 ((employeesWithConfirmedTimesheets - employeesCalculated) * 100.0 / totalActiveEmployees) : 0;
         double waitingTimesheetsPercent = totalActiveEmployees > 0 ?
                 ((totalActiveEmployees - employeesWithConfirmedTimesheets) * 100.0 / totalActiveEmployees) : 0;
+
+        addAvailableYears(model);
 
         model.addAttribute("totalPositions", totalPositions);
         model.addAttribute("totalDepartments", totalDepartments);
@@ -891,5 +894,16 @@ public class RatesetterController {
         return payments.stream()
                 .anyMatch(p -> "accrual".equals(p.getPaymentType().getCategory()) &&
                         !"ОКЛ".equals(p.getPaymentType().getCode()));
+    }
+
+    private void addAvailableYears(Model model) {
+        int currentYear = LocalDate.now().getYear();
+        List<Integer> availableYears = List.of(
+                currentYear - 2,
+                currentYear - 1,
+                currentYear,
+                currentYear + 1
+        );
+        model.addAttribute("availableYears", availableYears);
     }
 }

@@ -67,6 +67,8 @@ public class HrController {
         LocalDate periodEnd = periodStart.withDayOfMonth(periodStart.lengthOfMonth());
         long newEmployees = employeeService.getNewEmployeesCount(periodStart, periodEnd);
 
+        addAvailableYears(model);
+
         model.addAttribute("totalEmployees", totalEmployees);
         model.addAttribute("totalDepartments", totalDepartments);
         model.addAttribute("timesheetsConfirmed", timesheetsConfirmed);
@@ -604,5 +606,16 @@ public class HrController {
         }
 
         return days;
+    }
+
+    private void addAvailableYears(Model model) {
+        int currentYear = LocalDate.now().getYear();
+        List<Integer> availableYears = List.of(
+                currentYear - 2,
+                currentYear - 1,
+                currentYear,
+                currentYear + 1
+        );
+        model.addAttribute("availableYears", availableYears);
     }
 }

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Анализ по подразделениям</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Анализ по подразделениям',
+    icon='bi-building',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <div class="btn-group">
+        <a th:href="@{/analyst/reports/export-department-excel(month=${month}, year=${year})}"
+           class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+        <a th:href="@{/analyst/reports/export-department(month=${month}, year=${year})}"
+           class="btn btn-danger">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+    </div>
+</div>
+
+<div id="content">
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/department-analysis}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Месяц</label>
+                    <select class="form-select" name="month">
+                        <option th:each="monthEntry : ${@monthUtil.getRussianMonthsMap()}"
+                                th:value="${monthEntry.key}"
+                                th:selected="${month == monthEntry.key}"
+                                th:text="${monthEntry.value}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Год</label>
+                    <select class="form-select" name="year">
+                        <option th:each="y : ${#numbers.sequence(2023, 2026)}"
+                                th:value="${y}"
+                                th:selected="${year == y}"
+                                th:text="${y}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-cash-stack"></i> Общий ФОТ предприятия:
+                <span th:text="${#numbers.formatDecimal(totalCompanyFOT, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></span>
+            </h5>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-building"></i> Сравнительный анализ по подразделениям
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>Подразделение</th>
+                        <th class="text-end">Средняя ЗП</th>
+                        <th class="text-end">ФОТ подразделения</th>
+                        <th class="text-center">Сотрудников</th>
+                        <th class="text-end">Мин. ЗП</th>
+                        <th class="text-end">Макс. ЗП</th>
+                        <th class="text-end">Доля в ФОТ</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="stat : ${departmentStats}">
+                        <td>
+                            <strong th:text="${stat.departmentName}"></strong>
+                        </td>
+                        <td class="text-end fw-bold text-success"
+                            th:text="${#numbers.formatDecimal(stat.averageSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-end"
+                            th:text="${#numbers.formatDecimal(stat.totalFOT, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-center" th:text="${stat.employeeCount}"></td>
+                        <td class="text-end text-muted"
+                            th:text="${#numbers.formatDecimal(stat.minSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-end text-primary"
+                            th:text="${#numbers.formatDecimal(stat.maxSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-end">
+                            <span th:if="${totalCompanyFOT > 0}">
+                                <span th:text="${#numbers.formatDecimal(stat.totalFOT.divide(totalCompanyFOT, 4, T(java.math.RoundingMode).HALF_UP).multiply(100), 1, 1)} + '%'"
+                                      class="badge bg-info">
+                                </span>
+                            </span>
+                            <span th:if="${totalCompanyFOT == 0}" class="text-muted">-</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${#lists.isEmpty(departmentStats)}" class="text-center text-muted py-5">
+                <i class="bi bi-building display-1"></i>
+                <h4 class="mt-3">Нет данных для анализа</h4>
+                <p>За выбранный период отсутствуют данные о заработной плате</p>
+            </div>
+
+            <div th:if="${not #lists.isEmpty(departmentStats)}" id="chartContainer">
+                <canvas id="departmentChart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        document.addEventListener('DOMContentLoaded', function() {
+            const departmentStats = /*[[${departmentStats}]]*/ [];
+            if (departmentStats && departmentStats.length > 0) {
+                initDepartmentChart(departmentStats);
+            }
+        });
+
+        function initDepartmentChart(departmentStats) {
+            const ctx = document.getElementById('departmentChart').getContext('2d');
+
+            const departments = departmentStats.map(item => item.departmentName);
+            const averageSalaries = departmentStats.map(item => item.averageSalary);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: departments,
+                    datasets: [{
+                        label: 'Средняя ЗП по подразделениям (руб.)',
+                        data: averageSalaries,
+                        backgroundColor: departments.map((_, i) =>
+                            `hsl(${i * 360 / departments.length}, 70%, 60%)`
+                        ),
+                        borderColor: departments.map((_, i) =>
+                            `hsl(${i * 360 / departments.length}, 70%, 40%)`
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Средняя заработная плата по подразделениям'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Рубли'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>

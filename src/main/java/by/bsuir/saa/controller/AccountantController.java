@@ -15,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -181,6 +182,8 @@ public class AccountantController {
         double readyForTaxesPercent = bonusRate - taxRate;
         double readyForFinalPercent = taxRate - finalSalaryRate;
         double waitingForCalculationPercent = 100 - calculationRate;
+
+        addAvailableYears(model);
 
         model.addAttribute("totalEmployees", totalEmployees);
         model.addAttribute("employeesWithCalculations", employeesWithCalculations);
@@ -1129,24 +1132,6 @@ public class AccountantController {
         }
     }
 
-    @GetMapping("/reports/detailed-salary-excel")
-    public ResponseEntity<byte[]> generateDetailedSalaryExcel(@RequestParam Integer month,
-                                                              @RequestParam Integer year) {
-        try {
-            byte[] excelBytes = reportService.generateDetailedSalaryReportExcel(month, year);
-
-            String filename = "detailed_salary_report_" + month + "_" + year + ".xlsx";
-
-            return ResponseEntity.ok()
-                    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
-                    .body(excelBytes);
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @GetMapping("/reports/department-salary-excel")
     public ResponseEntity<byte[]> generateDepartmentSalaryExcel(@RequestParam Integer departmentId,
                                                                 @RequestParam Integer month,
@@ -1206,5 +1191,16 @@ public class AccountantController {
         }
 
         return new ReportStatistics(totalEmployees, totalAccrued, totalDeducted, totalNetSalary);
+    }
+
+    private void addAvailableYears(Model model) {
+        int currentYear = LocalDate.now().getYear();
+        List<Integer> availableYears = List.of(
+                currentYear - 2,
+                currentYear - 1,
+                currentYear,
+                currentYear + 1
+        );
+        model.addAttribute("availableYears", availableYears);
     }
 }

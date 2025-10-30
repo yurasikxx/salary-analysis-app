@@ -13,13 +13,20 @@
 )}">
 
 <div id="actions">
-    <div class="btn-group">
-        <label for="periodSelect">Период: </label>
-        <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
-            <option th:each="m : ${#numbers.sequence(1,12)}"
-                    th:value="${m + ',' + year}"
-                    th:selected="${month == m}"
-                    th:text="${@monthUtil.getRussianMonthName(m) + ' ' + year}">
+    <div class="btn-group align-items-center">
+        <label for="monthSelect" class="me-2 mb-0">Период: </label>
+        <select class="form-select form-select-sm" id="monthSelect" style="width: auto;">
+            <option th:each="monthEntry : ${@monthUtil.getRussianMonthsMap()}"
+                    th:value="${monthEntry.key}"
+                    th:selected="${month == monthEntry.key}"
+                    th:text="${monthEntry.value}">
+            </option>
+        </select>
+        <select class="form-select form-select-sm ms-1" id="yearSelect" style="width: auto;">
+            <option th:each="y : ${availableYears}"
+                    th:value="${y}"
+                    th:selected="${year == y}"
+                    th:text="${y}">
             </option>
         </select>
     </div>
@@ -271,11 +278,17 @@
 
 <div id="scripts">
     <script>
-        function changePeriod() {
-            const select = document.getElementById('periodSelect');
-            const [month, year] = select.value.split(',');
-            window.location.href = '/accountant/dashboard?month=' + month + '&year=' + year;
+        function updatePeriod() {
+            const month = document.getElementById('monthSelect').value;
+            const year = document.getElementById('yearSelect').value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('month', month);
+            url.searchParams.set('year', year);
+            window.location.href = url.toString();
         }
+
+        document.getElementById('monthSelect').addEventListener('change', updatePeriod);
+        document.getElementById('yearSelect').addEventListener('change', updatePeriod);
 
         document.addEventListener('DOMContentLoaded', function () {
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

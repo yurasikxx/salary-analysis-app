@@ -175,6 +175,30 @@
                             <i class="bi bi-bar-chart"></i> Главная
                         </a>
                     </li>
+
+                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
+                        <a class="nav-link" th:href="@{/analyst/salary-trends}">
+                            <i class="bi bi-graph-up"></i> Динамика ЗП
+                        </a>
+                    </li>
+
+                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
+                        <a class="nav-link" th:href="@{/analyst/department-analysis}">
+                            <i class="bi bi-building"></i> Анализ отделов
+                        </a>
+                    </li>
+
+                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
+                        <a class="nav-link" th:href="@{/analyst/position-analysis}">
+                            <i class="bi bi-person-badge"></i> Анализ должностей
+                        </a>
+                    </li>
+
+                    <li class="nav-item" sec:authorize="hasRole('ANALYST')">
+                        <a class="nav-link" th:href="@{/analyst/salary-structure}">
+                            <i class="bi bi-pie-chart"></i> Структура ЗП
+                        </a>
+                    </li>
                 </ul>
             </div>
         </nav>

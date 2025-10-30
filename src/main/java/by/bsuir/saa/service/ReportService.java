@@ -1,5 +1,6 @@
 package by.bsuir.saa.service;
 
+import by.bsuir.saa.controller.AnalystController;
 import by.bsuir.saa.entity.*;
 import by.bsuir.saa.repository.PaymentRepository;
 import by.bsuir.saa.repository.SalaryPaymentRepository;
@@ -10,6 +11,7 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -29,17 +31,20 @@ public class ReportService {
     private final SalaryPaymentRepository salaryPaymentRepository;
     private final EmployeeService employeeService;
     private final DepartmentService departmentService;
+    private final AnalyticsService analyticsService;
 
     private BaseFont russianBaseFont;
 
     public ReportService(PaymentRepository paymentRepository,
                          SalaryPaymentRepository salaryPaymentRepository,
                          EmployeeService employeeService,
-                         DepartmentService departmentService) {
+                         DepartmentService departmentService,
+                         AnalyticsService analyticsService) {
         this.paymentRepository = paymentRepository;
         this.salaryPaymentRepository = salaryPaymentRepository;
         this.employeeService = employeeService;
         this.departmentService = departmentService;
+        this.analyticsService = analyticsService;
         initializeRussianFont();
     }
 
@@ -194,7 +199,6 @@ public class ReportService {
         result.setSpacingBefore(20);
         document.add(result);
 
-        // Подписи
         document.add(new Paragraph(" "));
         PdfPTable signatureTable = createTable(new float[]{1, 1});
         signatureTable.addCell(createCell("Бухгалтер: _________________", normalFont, Element.ALIGN_LEFT));
@@ -306,34 +310,32 @@ public class ReportService {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Зарплатная ведомость " + getRussianMonthName(month) + " " + year);
 
-        CellStyle headerStyle = workbook.createCellStyle();
-        org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
-        headerFont.setBold(true);
-        headerStyle.setFont(headerFont);
-        headerStyle.setAlignment(HorizontalAlignment.CENTER);
-        headerStyle.setBorderBottom(BorderStyle.THIN);
-        headerStyle.setBorderTop(BorderStyle.THIN);
-        headerStyle.setBorderLeft(BorderStyle.THIN);
-        headerStyle.setBorderRight(BorderStyle.THIN);
+        CellStyle headerStyle = createEnhancedHeaderStyle(workbook);
+        CellStyle moneyStyle = createEnhancedMoneyStyle(workbook);
+        CellStyle normalStyle = createEnhancedNormalStyle(workbook);
+        CellStyle titleStyle = createTitleStyle(workbook);
+        CellStyle totalStyle = createTotalStyle(workbook);
 
-        CellStyle moneyStyle = workbook.createCellStyle();
-        moneyStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
-        moneyStyle.setBorderBottom(BorderStyle.THIN);
-        moneyStyle.setBorderTop(BorderStyle.THIN);
-        moneyStyle.setBorderLeft(BorderStyle.THIN);
-        moneyStyle.setBorderRight(BorderStyle.THIN);
-
-        CellStyle normalStyle = workbook.createCellStyle();
-        normalStyle.setBorderBottom(BorderStyle.THIN);
-        normalStyle.setBorderTop(BorderStyle.THIN);
-        normalStyle.setBorderLeft(BorderStyle.THIN);
-        normalStyle.setBorderRight(BorderStyle.THIN);
+        sheet.setColumnWidth(0, 8000);
+        sheet.setColumnWidth(1, 6000);
+        sheet.setColumnWidth(2, 5000);
+        sheet.setColumnWidth(3, 5000);
+        sheet.setColumnWidth(4, 5000);
+        sheet.setColumnWidth(5, 5000);
 
         Row titleRow = sheet.createRow(0);
         Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue("Зарплатная ведомость за " + getRussianMonthName(month) + " " + year);
+        titleCell.setCellValue("ЗАРПЛАТНАЯ ВЕДОМОСТЬ ЗА " + getRussianMonthName(month).toUpperCase() + " " + year);
+        titleCell.setCellStyle(titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
 
-        Row headerRow = sheet.createRow(2);
+        Row paramsRow = sheet.createRow(2);
+        paramsRow.createCell(0).setCellValue("Дата формирования:");
+        paramsRow.createCell(1).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+        paramsRow.createCell(4).setCellValue("Количество сотрудников:");
+        paramsRow.createCell(5).setCellValue(employees.size());
+
+        Row headerRow = sheet.createRow(4);
         String[] headers = {"ФИО сотрудника", "Должность", "Подразделение", "Начисления", "Удержания", "К выплате"};
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
@@ -341,7 +343,7 @@ public class ReportService {
             cell.setCellStyle(headerStyle);
         }
 
-        int rowNum = 3;
+        int rowNum = 5;
         BigDecimal totalAccruals = BigDecimal.ZERO;
         BigDecimal totalDeductions = BigDecimal.ZERO;
         BigDecimal totalNetSalary = BigDecimal.ZERO;
@@ -363,17 +365,14 @@ public class ReportService {
 
             Row row = sheet.createRow(rowNum++);
 
-            Cell nameCell = row.createCell(0);
-            nameCell.setCellValue(employee.getFullName());
-            nameCell.setCellStyle(normalStyle);
+            row.createCell(0).setCellValue(employee.getFullName());
+            row.getCell(0).setCellStyle(normalStyle);
 
-            Cell positionCell = row.createCell(1);
-            positionCell.setCellValue(employee.getPosition().getTitle());
-            positionCell.setCellStyle(normalStyle);
+            row.createCell(1).setCellValue(employee.getPosition().getTitle());
+            row.getCell(1).setCellStyle(normalStyle);
 
-            Cell deptCell = row.createCell(2);
-            deptCell.setCellValue(employee.getDepartment().getName());
-            deptCell.setCellStyle(normalStyle);
+            row.createCell(2).setCellValue(employee.getDepartment().getName());
+            row.getCell(2).setCellStyle(normalStyle);
 
             Cell accrualsCell = row.createCell(3);
             accrualsCell.setCellValue(accruals.doubleValue());
@@ -393,62 +392,26 @@ public class ReportService {
         }
 
         Row totalRow = sheet.createRow(rowNum);
-        Cell totalLabelCell = totalRow.createCell(2);
-        totalLabelCell.setCellValue("ВСЕГО:");
-        totalLabelCell.setCellStyle(headerStyle);
+        totalRow.createCell(0).setCellValue("ВСЕГО:");
+        totalRow.getCell(0).setCellStyle(totalStyle);
+
+        totalRow.createCell(1).setCellValue("");
+        totalRow.getCell(1).setCellStyle(totalStyle);
+
+        totalRow.createCell(2).setCellValue("");
+        totalRow.getCell(2).setCellStyle(totalStyle);
 
         Cell totalAccrualsCell = totalRow.createCell(3);
         totalAccrualsCell.setCellValue(totalAccruals.doubleValue());
-        totalAccrualsCell.setCellStyle(moneyStyle);
+        totalAccrualsCell.setCellStyle(totalStyle);
 
         Cell totalDeductionsCell = totalRow.createCell(4);
         totalDeductionsCell.setCellValue(totalDeductions.doubleValue());
-        totalDeductionsCell.setCellStyle(moneyStyle);
+        totalDeductionsCell.setCellStyle(totalStyle);
 
         Cell totalNetSalaryCell = totalRow.createCell(5);
         totalNetSalaryCell.setCellValue(totalNetSalary.doubleValue());
-        totalNetSalaryCell.setCellStyle(moneyStyle);
-
-        for (int i = 0; i < headers.length; i++) {
-            sheet.autoSizeColumn(i);
-        }
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        workbook.write(baos);
-        workbook.close();
-
-        return baos.toByteArray();
-    }
-
-    public byte[] generateDetailedSalaryReportExcel(Integer month, Integer year) throws IOException {
-        List<Employee> employees = employeeService.getActiveEmployees();
-        List<PaymentType> paymentTypes = getPaymentTypesForReport();
-
-        Workbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet("Детальная ведомость " + getRussianMonthName(month) + " " + year);
-
-        CellStyle headerStyle = createHeaderStyle(workbook);
-        CellStyle moneyStyle = createMoneyStyle(workbook);
-        CellStyle normalStyle = createNormalStyle(workbook);
-
-        Row headerRow = sheet.createRow(0);
-        String[] headers = createDetailedHeaders(paymentTypes);
-        for (int i = 0; i < headers.length; i++) {
-            Cell cell = headerRow.createCell(i);
-            cell.setCellValue(headers[i]);
-            cell.setCellStyle(headerStyle);
-        }
-
-        int rowNum = 1;
-        for (Employee employee : employees) {
-            Row row = sheet.createRow(rowNum++);
-            addEmployeeDetailedData(row, employee, month, year, paymentTypes, normalStyle, moneyStyle);
-        }
-
-        // Авто-размер колонок
-        for (int i = 0; i < headers.length; i++) {
-            sheet.autoSizeColumn(i);
-        }
+        totalNetSalaryCell.setCellStyle(totalStyle);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         workbook.write(baos);
@@ -523,68 +486,723 @@ public class ReportService {
         return style;
     }
 
-    private List<PaymentType> getPaymentTypesForReport() {
-        // Здесь должен быть метод для получения всех типов оплат
-        // Временно возвращаем пустой список - нужно реализовать в PaymentTypeService
-        return new ArrayList<>();
-    }
+    public byte[] generateSalaryTrendsReport(Integer monthsBack, Integer departmentId) throws IOException {
+        List<AnalystController.SalaryTrendData> trendData = analyticsService.getSalaryTrends(monthsBack, departmentId);
 
-    private String[] createDetailedHeaders(List<PaymentType> paymentTypes) {
-        List<String> headers = new ArrayList<>();
-        headers.add("ФИО сотрудника");
-        headers.add("Должность");
-        headers.add("Подразделение");
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Динамика ЗП");
 
-        for (PaymentType type : paymentTypes) {
-            headers.add(type.getName());
+        CellStyle headerStyle = createEnhancedHeaderStyle(workbook);
+        CellStyle moneyStyle = createEnhancedMoneyStyle(workbook);
+        CellStyle percentStyle = createEnhancedPercentStyle(workbook);
+        CellStyle titleStyle = createTitleStyle(workbook);
+
+        sheet.setColumnWidth(0, 6000);
+        sheet.setColumnWidth(1, 5000);
+        sheet.setColumnWidth(2, 6000);
+        sheet.setColumnWidth(3, 4000);
+        sheet.setColumnWidth(4, 5000);
+        sheet.setColumnWidth(5, 5000);
+        sheet.setColumnWidth(6, 5000);
+
+        Row titleRow = sheet.createRow(0);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("ОТЧЕТ ПО ДИНАМИКЕ ЗАРАБОТНОЙ ПЛАТЫ");
+        titleCell.setCellStyle(titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
+
+        Row paramsRow1 = sheet.createRow(2);
+        paramsRow1.createCell(0).setCellValue("Период анализа:");
+        paramsRow1.createCell(1).setCellValue(monthsBack + " месяцев");
+
+        Row paramsRow2 = sheet.createRow(3);
+        paramsRow2.createCell(0).setCellValue("Подразделение:");
+        if (departmentId != null) {
+            Department department = departmentService.getDepartmentById(departmentId).orElse(null);
+            paramsRow2.createCell(1).setCellValue(department != null ? department.getName() : "Все подразделения");
+        } else {
+            paramsRow2.createCell(1).setCellValue("Все подразделения");
         }
 
-        headers.add("Всего начислено");
-        headers.add("Всего удержано");
-        headers.add("К выплате");
+        Row paramsRow3 = sheet.createRow(4);
+        paramsRow3.createCell(0).setCellValue("Дата формирования:");
+        paramsRow3.createCell(1).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
 
-        return headers.toArray(new String[0]);
-    }
+        Row headerRow = sheet.createRow(6);
+        String[] headers = {"Период", "Средняя ЗП", "ФОТ", "Сотрудников", "Мин. ЗП", "Макс. ЗП", "Изменение"};
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
 
-    private void addEmployeeDetailedData(Row row, Employee employee, Integer month, Integer year,
-                                         List<PaymentType> paymentTypes, CellStyle normalStyle, CellStyle moneyStyle) {
-        List<Payment> payments = paymentRepository.findByEmployeeAndMonthAndYear(employee, month, year);
+        int rowNum = 7;
+        BigDecimal previousSalary = null;
 
-        row.createCell(0).setCellValue(employee.getFullName());
-        row.createCell(1).setCellValue(employee.getPosition().getTitle());
-        row.createCell(2).setCellValue(employee.getDepartment().getName());
+        for (AnalystController.SalaryTrendData data : trendData) {
+            Row row = sheet.createRow(rowNum++);
 
-        int colIndex = 3;
-        BigDecimal totalAccruals = BigDecimal.ZERO;
-        BigDecimal totalDeductions = BigDecimal.ZERO;
+            row.createCell(0).setCellValue(data.getPeriod());
 
-        for (PaymentType type : paymentTypes) {
-            BigDecimal amount = payments.stream()
-                    .filter(p -> p.getPaymentType().getId().equals(type.getId()))
-                    .map(Payment::getAmount)
+            Cell avgCell = row.createCell(1);
+            avgCell.setCellValue(data.getAverageSalary().doubleValue());
+            avgCell.setCellStyle(moneyStyle);
+
+            Cell fotCell = row.createCell(2);
+            fotCell.setCellValue(data.getTotalFOT().doubleValue());
+            fotCell.setCellStyle(moneyStyle);
+
+            row.createCell(3).setCellValue(data.getEmployeeCount());
+
+            Cell minCell = row.createCell(4);
+            minCell.setCellValue(data.getMinSalary().doubleValue());
+            minCell.setCellStyle(moneyStyle);
+
+            Cell maxCell = row.createCell(5);
+            maxCell.setCellValue(data.getMaxSalary().doubleValue());
+            maxCell.setCellStyle(moneyStyle);
+
+            if (previousSalary != null && previousSalary.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal change = data.getAverageSalary().subtract(previousSalary)
+                        .divide(previousSalary, 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+                Cell changeCell = row.createCell(6);
+                changeCell.setCellValue(change.doubleValue() / 100);
+
+                CellStyle changeStyle = workbook.createCellStyle();
+                changeStyle.cloneStyleFrom(percentStyle);
+                if (change.compareTo(BigDecimal.ZERO) > 0) {
+                    changeStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+                    changeStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                } else if (change.compareTo(BigDecimal.ZERO) < 0) {
+                    changeStyle.setFillForegroundColor(IndexedColors.LIGHT_ORANGE.getIndex());
+                    changeStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                }
+                changeCell.setCellStyle(changeStyle);
+            } else {
+                row.createCell(6).setCellValue("-");
+            }
+
+            previousSalary = data.getAverageSalary();
+        }
+
+        if (!trendData.isEmpty()) {
+            Row totalRow = sheet.createRow(rowNum++);
+            totalRow.createCell(0).setCellValue("ИТОГО:");
+
+            CellStyle totalStyle = createTotalStyle(workbook);
+            totalRow.getCell(0).setCellStyle(totalStyle);
+
+            BigDecimal totalFOT = trendData.stream()
+                    .map(AnalystController.SalaryTrendData::getTotalFOT)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+            Cell totalFotCell = totalRow.createCell(2);
+            totalFotCell.setCellValue(totalFOT.doubleValue());
+            totalFotCell.setCellStyle(totalStyle);
 
-            Cell cell = row.createCell(colIndex++);
-            cell.setCellValue(amount.doubleValue());
-            cell.setCellStyle(moneyStyle);
+            int totalEmployees = trendData.stream()
+                    .mapToInt(AnalystController.SalaryTrendData::getEmployeeCount)
+                    .sum();
+            totalRow.createCell(3).setCellValue(totalEmployees);
+            totalRow.getCell(3).setCellStyle(totalStyle);
 
-            if ("accrual".equals(type.getCategory())) {
-                totalAccruals = totalAccruals.add(amount);
-            } else if ("deduction".equals(type.getCategory())) {
-                totalDeductions = totalDeductions.add(amount.abs());
+            if (trendData.size() > 1) {
+                BigDecimal firstSalary = trendData.get(0).getAverageSalary();
+                BigDecimal lastSalary = trendData.get(trendData.size() - 1).getAverageSalary();
+                BigDecimal avgChange = lastSalary.subtract(firstSalary)
+                        .divide(firstSalary, 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+                Cell changeCell = totalRow.createCell(6);
+                changeCell.setCellValue(avgChange.doubleValue() / 100);
+                changeCell.setCellStyle(totalStyle);
             }
         }
 
-        Cell totalAccrualsCell = row.createCell(colIndex++);
-        totalAccrualsCell.setCellValue(totalAccruals.doubleValue());
-        totalAccrualsCell.setCellStyle(moneyStyle);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        workbook.write(baos);
+        workbook.close();
 
-        Cell totalDeductionsCell = row.createCell(colIndex++);
-        totalDeductionsCell.setCellValue(totalDeductions.doubleValue());
-        totalDeductionsCell.setCellStyle(moneyStyle);
+        return baos.toByteArray();
+    }
 
-        Cell netSalaryCell = row.createCell(colIndex);
-        netSalaryCell.setCellValue(totalAccruals.subtract(totalDeductions).doubleValue());
-        netSalaryCell.setCellStyle(moneyStyle);
+    public byte[] generatePositionAnalysisReport(Integer month, Integer year) throws IOException {
+        List<AnalystController.PositionStats> positionStats = analyticsService.getPositionStats(month, year);
+
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Анализ по должностям");
+
+        CellStyle headerStyle = createEnhancedHeaderStyle(workbook);
+        CellStyle moneyStyle = createEnhancedMoneyStyle(workbook);
+        CellStyle titleStyle = createTitleStyle(workbook);
+        CellStyle totalStyle = createTotalStyle(workbook);
+
+        sheet.setColumnWidth(0, 8000);
+        sheet.setColumnWidth(1, 5000);
+        sheet.setColumnWidth(2, 5000);
+        sheet.setColumnWidth(3, 5000);
+        sheet.setColumnWidth(4, 4000);
+        sheet.setColumnWidth(5, 6000);
+        sheet.setColumnWidth(6, 5000);
+
+        Row titleRow = sheet.createRow(0);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("АНАЛИЗ ЗАРАБОТНОЙ ПЛАТЫ ПО ДОЛЖНОСТЯМ ЗА " + getRussianMonthName(month).toUpperCase() + " " + year);
+        titleCell.setCellStyle(titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
+
+        Row paramsRow = sheet.createRow(2);
+        paramsRow.createCell(0).setCellValue("Дата формирования:");
+        paramsRow.createCell(1).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+
+        Row headerRow = sheet.createRow(4);
+        String[] headers = {"Должность", "Средняя ЗП", "Мин. ЗП", "Макс. ЗП", "Сотрудников", "ФОТ должности", "Разброс ЗП"};
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        int rowNum = 5;
+        for (AnalystController.PositionStats stat : positionStats) {
+            Row row = sheet.createRow(rowNum++);
+
+            row.createCell(0).setCellValue(stat.getPositionTitle());
+
+            Cell avgCell = row.createCell(1);
+            avgCell.setCellValue(stat.getAverageSalary().doubleValue());
+            avgCell.setCellStyle(moneyStyle);
+
+            Cell minCell = row.createCell(2);
+            minCell.setCellValue(stat.getMinSalary().doubleValue());
+            minCell.setCellStyle(moneyStyle);
+
+            Cell maxCell = row.createCell(3);
+            maxCell.setCellValue(stat.getMaxSalary().doubleValue());
+            maxCell.setCellStyle(moneyStyle);
+
+            row.createCell(4).setCellValue(stat.getEmployeeCount());
+
+            Cell fotCell = row.createCell(5);
+            fotCell.setCellValue(stat.getTotalFOT().doubleValue());
+            fotCell.setCellStyle(moneyStyle);
+
+            BigDecimal spread = stat.getMaxSalary().subtract(stat.getMinSalary());
+            Cell spreadCell = row.createCell(6);
+            spreadCell.setCellValue(spread.doubleValue());
+            spreadCell.setCellStyle(moneyStyle);
+        }
+
+        if (!positionStats.isEmpty()) {
+            Row totalRow = sheet.createRow(rowNum++);
+            totalRow.createCell(0).setCellValue("ИТОГО:");
+            totalRow.getCell(0).setCellStyle(totalStyle);
+
+            BigDecimal totalFOT = positionStats.stream()
+                    .map(AnalystController.PositionStats::getTotalFOT)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            Cell totalFotCell = totalRow.createCell(5);
+            totalFotCell.setCellValue(totalFOT.doubleValue());
+            totalFotCell.setCellStyle(totalStyle);
+
+            long totalEmployees = positionStats.stream()
+                    .mapToLong(AnalystController.PositionStats::getEmployeeCount)
+                    .sum();
+            totalRow.createCell(4).setCellValue(totalEmployees);
+            totalRow.getCell(4).setCellStyle(totalStyle);
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        workbook.write(baos);
+        workbook.close();
+
+        return baos.toByteArray();
+    }
+
+    public byte[] generateDepartmentAnalysisExcel(Integer month, Integer year) throws IOException {
+        List<AnalystController.DepartmentStats> departmentStats = analyticsService.calculateDepartmentStats(month, year);
+        BigDecimal totalCompanyFOT = analyticsService.getTotalCompanyFOT(month, year);
+
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Анализ по подразделениям");
+
+        CellStyle headerStyle = createEnhancedHeaderStyle(workbook);
+        CellStyle moneyStyle = createEnhancedMoneyStyle(workbook);
+        CellStyle titleStyle = createTitleStyle(workbook);
+        CellStyle totalStyle = createTotalStyle(workbook);
+
+        sheet.setColumnWidth(0, 8000);
+        sheet.setColumnWidth(1, 5000);
+        sheet.setColumnWidth(2, 6000);
+        sheet.setColumnWidth(3, 4000);
+        sheet.setColumnWidth(4, 5000);
+        sheet.setColumnWidth(5, 5000);
+        sheet.setColumnWidth(6, 4000);
+
+        Row titleRow = sheet.createRow(0);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("АНАЛИТИЧЕСКИЙ ОТЧЕТ ПО ПОДРАЗДЕЛЕНИЯМ ЗА " + getRussianMonthName(month).toUpperCase() + " " + year);
+        titleCell.setCellStyle(titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
+
+        Row paramsRow = sheet.createRow(2);
+        paramsRow.createCell(0).setCellValue("Дата формирования:");
+        paramsRow.createCell(1).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+
+        Row summaryRow = sheet.createRow(4);
+        summaryRow.createCell(0).setCellValue("Общий ФОТ предприятия:");
+        Cell totalFotCell = summaryRow.createCell(1);
+        totalFotCell.setCellValue(totalCompanyFOT.doubleValue());
+        totalFotCell.setCellStyle(moneyStyle);
+
+        Row headerRow = sheet.createRow(6);
+        String[] headers = {"Подразделение", "Средняя ЗП", "ФОТ подразделения", "Сотрудников", "Мин. ЗП", "Макс. ЗП", "Доля в ФОТ"};
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        int rowNum = 7;
+        for (AnalystController.DepartmentStats stat : departmentStats) {
+            Row row = sheet.createRow(rowNum++);
+
+            row.createCell(0).setCellValue(stat.getDepartmentName());
+
+            Cell avgCell = row.createCell(1);
+            avgCell.setCellValue(stat.getAverageSalary().doubleValue());
+            avgCell.setCellStyle(moneyStyle);
+
+            Cell fotCell = row.createCell(2);
+            fotCell.setCellValue(stat.getTotalFOT().doubleValue());
+            fotCell.setCellStyle(moneyStyle);
+
+            row.createCell(3).setCellValue(stat.getEmployeeCount());
+
+            Cell minCell = row.createCell(4);
+            minCell.setCellValue(stat.getMinSalary().doubleValue());
+            minCell.setCellStyle(moneyStyle);
+
+            Cell maxCell = row.createCell(5);
+            maxCell.setCellValue(stat.getMaxSalary().doubleValue());
+            maxCell.setCellStyle(moneyStyle);
+
+            BigDecimal share = totalCompanyFOT.compareTo(BigDecimal.ZERO) > 0 ?
+                    stat.getTotalFOT().divide(totalCompanyFOT, 4, java.math.RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100")) : BigDecimal.ZERO;
+            Cell shareCell = row.createCell(6);
+            shareCell.setCellValue(share.doubleValue() / 100);
+            shareCell.setCellStyle(createEnhancedPercentStyle(workbook));
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        workbook.write(baos);
+        workbook.close();
+
+        return baos.toByteArray();
+    }
+
+    public byte[] generateDepartmentAnalysisReport(Integer month, Integer year) throws DocumentException {
+        List<AnalystController.DepartmentStats> departmentStats = analyticsService.calculateDepartmentStats(month, year);
+        BigDecimal totalCompanyFOT = analyticsService.getTotalCompanyFOT(month, year);
+
+        Document document = new Document(PageSize.A4.rotate(), 50, 50, 50, 50);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter.getInstance(document, baos);
+
+        document.open();
+
+        Font titleFont = createTitleFont();
+        Font headerFont = createHeaderFont();
+        Font normalFont = createNormalFont();
+        Font boldFont = createBoldFont();
+
+        Paragraph title = new Paragraph("Аналитический отчет по подразделениям", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(20);
+        document.add(title);
+
+        addKeyValue(document, "Период:", getRussianMonthName(month) + " " + year, boldFont, normalFont);
+        addKeyValue(document, "Дата формирования:",
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), boldFont, normalFont);
+
+        document.add(new Paragraph(" "));
+
+        Paragraph summary = new Paragraph("Сводная информация по предприятию", headerFont);
+        summary.setSpacingAfter(10);
+        document.add(summary);
+
+        PdfPTable summaryTable = createTable(new float[]{2, 1, 1, 1});
+        summaryTable.addCell(createCell("Показатель", headerFont, Element.ALIGN_CENTER));
+        summaryTable.addCell(createCell("Значение", headerFont, Element.ALIGN_CENTER));
+        summaryTable.addCell(createCell("Ед. изм.", headerFont, Element.ALIGN_CENTER));
+        summaryTable.addCell(createCell("Примечание", headerFont, Element.ALIGN_CENTER));
+
+        long totalEmployees = departmentStats.stream()
+                .mapToLong(AnalystController.DepartmentStats::getEmployeeCount)
+                .sum();
+        BigDecimal avgSalary = totalEmployees > 0 ?
+                totalCompanyFOT.divide(new BigDecimal(totalEmployees), 2, java.math.RoundingMode.HALF_UP) :
+                BigDecimal.ZERO;
+
+        addSummaryRow(summaryTable, "Общий ФОТ предприятия", totalCompanyFOT, "руб.", "Фонд оплаты труда", normalFont);
+        addSummaryRow(summaryTable, "Средняя заработная плата", avgSalary, "руб.", "По предприятию", normalFont);
+        addSummaryRow(summaryTable, "Количество сотрудников", new BigDecimal(totalEmployees), "чел.", "Всего по предприятию", normalFont);
+        addSummaryRow(summaryTable, "Количество подразделений", new BigDecimal(departmentStats.size()), "ед.", "С рассчитанной ЗП", normalFont);
+
+        document.add(summaryTable);
+        document.add(new Paragraph(" "));
+
+        Paragraph detailTitle = new Paragraph("Детальный анализ по подразделениям", headerFont);
+        detailTitle.setSpacingAfter(10);
+        document.add(detailTitle);
+
+        PdfPTable detailTable = createTable(new float[]{3, 2, 2, 1, 2, 2, 2});
+
+        detailTable.addCell(createCell("Подразделение", headerFont, Element.ALIGN_CENTER));
+        detailTable.addCell(createCell("Средняя ЗП", headerFont, Element.ALIGN_CENTER));
+        detailTable.addCell(createCell("ФОТ подразделения", headerFont, Element.ALIGN_CENTER));
+        detailTable.addCell(createCell("Сотрудников", headerFont, Element.ALIGN_CENTER));
+        detailTable.addCell(createCell("Мин. ЗП", headerFont, Element.ALIGN_CENTER));
+        detailTable.addCell(createCell("Макс. ЗП", headerFont, Element.ALIGN_CENTER));
+        detailTable.addCell(createCell("Доля в ФОТ", headerFont, Element.ALIGN_CENTER));
+
+        for (AnalystController.DepartmentStats stat : departmentStats) {
+            detailTable.addCell(createCell(stat.getDepartmentName(), normalFont, Element.ALIGN_LEFT));
+            detailTable.addCell(createCell(formatMoney(stat.getAverageSalary()), normalFont, Element.ALIGN_RIGHT));
+            detailTable.addCell(createCell(formatMoney(stat.getTotalFOT()), normalFont, Element.ALIGN_RIGHT));
+            detailTable.addCell(createCell(String.valueOf(stat.getEmployeeCount()), normalFont, Element.ALIGN_CENTER));
+            detailTable.addCell(createCell(formatMoney(stat.getMinSalary()), normalFont, Element.ALIGN_RIGHT));
+            detailTable.addCell(createCell(formatMoney(stat.getMaxSalary()), normalFont, Element.ALIGN_RIGHT));
+
+            BigDecimal share = totalCompanyFOT.compareTo(BigDecimal.ZERO) > 0 ?
+                    stat.getTotalFOT().divide(totalCompanyFOT, 4, java.math.RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100")) : BigDecimal.ZERO;
+            detailTable.addCell(createCell(String.format("%.1f%%", share), normalFont, Element.ALIGN_RIGHT));
+        }
+
+        document.add(detailTable);
+
+        document.add(new Paragraph(" "));
+        Paragraph analysis = new Paragraph("Аналитические выводы", headerFont);
+        analysis.setSpacingAfter(10);
+        document.add(analysis);
+
+        if (!departmentStats.isEmpty()) {
+            AnalystController.DepartmentStats maxSalaryDept = departmentStats.get(0);
+            AnalystController.DepartmentStats minSalaryDept = departmentStats.get(departmentStats.size() - 1);
+
+            List<String> conclusions = new ArrayList<>();
+            conclusions.add(String.format("Наибольшая средняя заработная плата наблюдается в подразделении '%s' - %s руб.",
+                    maxSalaryDept.getDepartmentName(), formatMoney(maxSalaryDept.getAverageSalary())));
+            conclusions.add(String.format("Наименьшая средняя заработная плата наблюдается в подразделении '%s' - %s руб.",
+                    minSalaryDept.getDepartmentName(), formatMoney(minSalaryDept.getAverageSalary())));
+            conclusions.add(String.format("Разница между максимальной и минимальной средней ЗП составляет %s руб.",
+                    formatMoney(maxSalaryDept.getAverageSalary().subtract(minSalaryDept.getAverageSalary()))));
+
+            for (String conclusion : conclusions) {
+                Paragraph p = new Paragraph("• " + conclusion, normalFont);
+                p.setSpacingAfter(5);
+                document.add(p);
+            }
+        }
+
+        document.close();
+        return baos.toByteArray();
+    }
+
+    public byte[] generateSalaryTrendsPdf(Integer monthsBack, Integer departmentId) throws DocumentException {
+        List<AnalystController.SalaryTrendData> trendData = analyticsService.getSalaryTrends(monthsBack, departmentId);
+
+        Document document = new Document(PageSize.A4.rotate(), 50, 50, 50, 50);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter.getInstance(document, baos);
+
+        document.open();
+
+        Font titleFont = createTitleFont();
+        Font headerFont = createHeaderFont();
+        Font normalFont = createNormalFont();
+        Font boldFont = createBoldFont();
+
+        Paragraph title = new Paragraph("Отчет по динамике заработной платы", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(20);
+        document.add(title);
+
+        addKeyValue(document, "Период анализа:", monthsBack + " месяцев", boldFont, normalFont);
+        addKeyValue(document, "Подразделение:", departmentId != null ?
+                departmentService.getDepartmentById(departmentId).map(Department::getName).orElse("Все подразделения") :
+                "Все подразделения", boldFont, normalFont);
+        addKeyValue(document, "Дата формирования:",
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), boldFont, normalFont);
+
+        document.add(new Paragraph(" "));
+
+        PdfPTable table = createTable(new float[]{3, 2, 2, 2, 2, 2, 2});
+
+        table.addCell(createCell("Период", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Средняя ЗП", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("ФОТ", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Сотрудников", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Мин. ЗП", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Макс. ЗП", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Изменение", headerFont, Element.ALIGN_CENTER));
+
+        BigDecimal previousSalary = null;
+        BigDecimal totalFOT = BigDecimal.ZERO;
+        int totalEmployees = 0;
+
+        for (AnalystController.SalaryTrendData data : trendData) {
+            table.addCell(createCell(data.getPeriod(), normalFont, Element.ALIGN_LEFT));
+            table.addCell(createCell(formatMoney(data.getAverageSalary()), normalFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(formatMoney(data.getTotalFOT()), normalFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(String.valueOf(data.getEmployeeCount()), normalFont, Element.ALIGN_CENTER));
+            table.addCell(createCell(formatMoney(data.getMinSalary()), normalFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(formatMoney(data.getMaxSalary()), normalFont, Element.ALIGN_RIGHT));
+
+            String changeText = "-";
+            if (previousSalary != null && previousSalary.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal change = data.getAverageSalary().subtract(previousSalary)
+                        .divide(previousSalary, 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+                changeText = String.format("%+.1f%%", change);
+            }
+            table.addCell(createCell(changeText, normalFont, Element.ALIGN_RIGHT));
+
+            previousSalary = data.getAverageSalary();
+            totalFOT = totalFOT.add(data.getTotalFOT());
+            totalEmployees += data.getEmployeeCount();
+        }
+
+        if (!trendData.isEmpty()) {
+            table.addCell(createCell("ИТОГО:", headerFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell(formatMoney(totalFOT), headerFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(String.valueOf(totalEmployees), headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+        }
+
+        document.add(table);
+
+        if (!trendData.isEmpty() && trendData.size() > 1) {
+            document.add(new Paragraph(" "));
+            Paragraph analysis = new Paragraph("Аналитические выводы", headerFont);
+            analysis.setSpacingAfter(10);
+            document.add(analysis);
+
+            AnalystController.SalaryTrendData firstPeriod = trendData.get(0);
+            AnalystController.SalaryTrendData lastPeriod = trendData.get(trendData.size() - 1);
+
+            BigDecimal totalChange = lastPeriod.getAverageSalary().subtract(firstPeriod.getAverageSalary())
+                    .divide(firstPeriod.getAverageSalary(), 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"));
+
+            List<String> conclusions = new ArrayList<>();
+            conclusions.add(String.format("Общее изменение средней заработной платы за период: %+.1f%%", totalChange));
+            conclusions.add(String.format("Начальная средняя ЗП: %s руб.", formatMoney(firstPeriod.getAverageSalary())));
+            conclusions.add(String.format("Конечная средняя ЗП: %s руб.", formatMoney(lastPeriod.getAverageSalary())));
+            conclusions.add(String.format("Общий ФОТ за период: %s руб.", formatMoney(totalFOT)));
+
+            for (String conclusion : conclusions) {
+                Paragraph p = new Paragraph("• " + conclusion, normalFont);
+                p.setSpacingAfter(5);
+                document.add(p);
+            }
+        }
+
+        document.close();
+        return baos.toByteArray();
+    }
+
+    public byte[] generatePositionAnalysisPdf(Integer month, Integer year) throws DocumentException {
+        List<AnalystController.PositionStats> positionStats = analyticsService.getPositionStats(month, year);
+
+        Document document = new Document(PageSize.A4.rotate(), 50, 50, 50, 50);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter.getInstance(document, baos);
+
+        document.open();
+
+        Font titleFont = createTitleFont();
+        Font headerFont = createHeaderFont();
+        Font normalFont = createNormalFont();
+        Font boldFont = createBoldFont();
+
+        Paragraph title = new Paragraph("Анализ заработной платы по должностям", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(20);
+        document.add(title);
+
+        addKeyValue(document, "Период:", getRussianMonthName(month) + " " + year, boldFont, normalFont);
+        addKeyValue(document, "Дата формирования:",
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), boldFont, normalFont);
+
+        document.add(new Paragraph(" "));
+
+        PdfPTable table = createTable(new float[]{3, 2, 2, 2, 2, 2, 2});
+
+        table.addCell(createCell("Должность", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Средняя ЗП", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Мин. ЗП", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Макс. ЗП", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Сотрудников", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("ФОТ должности", headerFont, Element.ALIGN_CENTER));
+        table.addCell(createCell("Разброс ЗП", headerFont, Element.ALIGN_CENTER));
+
+        BigDecimal totalFOT = BigDecimal.ZERO;
+        long totalEmployees = 0;
+
+        for (AnalystController.PositionStats stat : positionStats) {
+            table.addCell(createCell(stat.getPositionTitle(), normalFont, Element.ALIGN_LEFT));
+            table.addCell(createCell(formatMoney(stat.getAverageSalary()), normalFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(formatMoney(stat.getMinSalary()), normalFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(formatMoney(stat.getMaxSalary()), normalFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell(String.valueOf(stat.getEmployeeCount()), normalFont, Element.ALIGN_CENTER));
+            table.addCell(createCell(formatMoney(stat.getTotalFOT()), normalFont, Element.ALIGN_RIGHT));
+
+            BigDecimal spread = stat.getMaxSalary().subtract(stat.getMinSalary());
+            table.addCell(createCell(formatMoney(spread), normalFont, Element.ALIGN_RIGHT));
+
+            totalFOT = totalFOT.add(stat.getTotalFOT());
+            totalEmployees += stat.getEmployeeCount();
+        }
+
+        if (!positionStats.isEmpty()) {
+            table.addCell(createCell("ИТОГО:", headerFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell(String.valueOf(totalEmployees), headerFont, Element.ALIGN_CENTER));
+            table.addCell(createCell(formatMoney(totalFOT), headerFont, Element.ALIGN_RIGHT));
+            table.addCell(createCell("", headerFont, Element.ALIGN_CENTER));
+        }
+
+        document.add(table);
+
+        if (!positionStats.isEmpty()) {
+            document.add(new Paragraph(" "));
+            Paragraph analysis = new Paragraph("Аналитические выводы", headerFont);
+            analysis.setSpacingAfter(10);
+            document.add(analysis);
+
+            AnalystController.PositionStats maxSalaryPos = positionStats.get(0);
+            AnalystController.PositionStats minSalaryPos = positionStats.get(positionStats.size() - 1);
+
+            List<String> conclusions = new ArrayList<>();
+            conclusions.add(String.format("Наибольшая средняя заработная плата у должности '%s' - %s руб.",
+                    maxSalaryPos.getPositionTitle(), formatMoney(maxSalaryPos.getAverageSalary())));
+            conclusions.add(String.format("Наименьшая средняя заработная плата у должности '%s' - %s руб.",
+                    minSalaryPos.getPositionTitle(), formatMoney(minSalaryPos.getAverageSalary())));
+            conclusions.add(String.format("Разница между максимальной и минимальной средней ЗП составляет %s руб.",
+                    formatMoney(maxSalaryPos.getAverageSalary().subtract(minSalaryPos.getAverageSalary()))));
+
+            for (String conclusion : conclusions) {
+                Paragraph p = new Paragraph("• " + conclusion, normalFont);
+                p.setSpacingAfter(5);
+                document.add(p);
+            }
+        }
+
+        document.close();
+        return baos.toByteArray();
+    }
+
+    private CellStyle createEnhancedHeaderStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 11);
+        font.setColor(IndexedColors.WHITE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setBorderBottom(BorderStyle.MEDIUM);
+        style.setBorderTop(BorderStyle.MEDIUM);
+        style.setBorderLeft(BorderStyle.MEDIUM);
+        style.setBorderRight(BorderStyle.MEDIUM);
+        return style;
+    }
+
+    private CellStyle createEnhancedMoneyStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private CellStyle createEnhancedNormalStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 11);
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setBorderBottom(BorderStyle.MEDIUM);
+        style.setBorderTop(BorderStyle.MEDIUM);
+        style.setBorderLeft(BorderStyle.MEDIUM);
+        style.setBorderRight(BorderStyle.MEDIUM);
+        return style;
+    }
+
+    private CellStyle createEnhancedPercentStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(workbook.createDataFormat().getFormat("0.00%"));
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private CellStyle createTitleStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 14);
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        return style;
+    }
+
+    private CellStyle createTotalStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 11);
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.MEDIUM);
+        style.setBorderTop(BorderStyle.MEDIUM);
+        style.setBorderLeft(BorderStyle.MEDIUM);
+        style.setBorderRight(BorderStyle.MEDIUM);
+        return style;
+    }
+
+    private CellStyle createPercentStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(workbook.createDataFormat().getFormat("0.00%"));
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private void addSummaryRow(PdfPTable table, String indicator, BigDecimal value, String unit, String note, Font font) {
+        table.addCell(createCell(indicator, font, Element.ALIGN_LEFT));
+        table.addCell(createCell(formatMoney(value), font, Element.ALIGN_RIGHT));
+        table.addCell(createCell(unit, font, Element.ALIGN_CENTER));
+        table.addCell(createCell(note, font, Element.ALIGN_LEFT));
     }
 }

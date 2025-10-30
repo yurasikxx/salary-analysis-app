@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Динамика заработной платы</title>
+</head>
+<body th:replace="~{layout :: html(
+    title='Анализ динамики заработной платы',
+    icon='bi-graph-up',
+    actions=~{:: #actions},
+    content=~{:: #content},
+    scripts=~{:: #scripts}
+)}">
+
+<div id="actions">
+    <div class="btn-group">
+        <button class="btn btn-success" onclick="generateTrendReportExcel()">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+        </button>
+        <button class="btn btn-danger" onclick="generateTrendReportPdf()">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </button>
+    </div>
+</div>
+
+<div id="content">
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" th:action="@{/analyst/salary-trends}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Период анализа</label>
+                    <select class="form-select" name="monthsBack">
+                        <option value="3" th:selected="${monthsBack == 3}">3 месяца</option>
+                        <option value="6" th:selected="${monthsBack == 6}">6 месяцев</option>
+                        <option value="12" th:selected="${monthsBack == 12}">12 месяцев</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Подразделение</label>
+                    <select class="form-select" name="departmentId">
+                        <option value="">Все подразделения</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}"
+                                th:selected="${departmentId == dept.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-graph-up"></i> Динамика средней заработной платы
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>Период</th>
+                        <th class="text-end">Средняя ЗП</th>
+                        <th class="text-end">ФОТ</th>
+                        <th class="text-center">Сотрудников</th>
+                        <th class="text-end">Мин. ЗП</th>
+                        <th class="text-end">Макс. ЗП</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="data : ${trendData}">
+                        <td th:text="${data.period}"></td>
+                        <td class="text-end fw-bold text-success"
+                            th:text="${#numbers.formatDecimal(data.averageSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-end"
+                            th:text="${#numbers.formatDecimal(data.totalFOT, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-center" th:text="${data.employeeCount}"></td>
+                        <td class="text-end text-muted"
+                            th:text="${#numbers.formatDecimal(data.minSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                        <td class="text-end text-primary"
+                            th:text="${#numbers.formatDecimal(data.maxSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${#lists.isEmpty(trendData)}" class="text-center text-muted py-5">
+                <i class="bi bi-graph-up display-1"></i>
+                <h4 class="mt-3">Нет данных для анализа</h4>
+                <p>За выбранный период отсутствуют данные о заработной плате</p>
+            </div>
+
+            <div th:if="${not #lists.isEmpty(trendData)}" id="chartContainer">
+                <canvas id="trendChart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scripts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        document.addEventListener('DOMContentLoaded', function() {
+            const trendData = /*[[${trendData}]]*/ [];
+            if (trendData && trendData.length > 0) {
+                initTrendChart(trendData);
+            }
+        });
+
+        function initTrendChart(trendData) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            const periods = trendData.map(item => item.period);
+            const averageSalaries = trendData.map(item => item.averageSalary);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: periods,
+                    datasets: [{
+                        label: 'Средняя ЗП (руб.)',
+                        data: averageSalaries,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Динамика средней заработной платы'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Рубли'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        /*]]>*/
+
+        function generateTrendReportExcel() {
+            const monthsBack = document.querySelector('select[name="monthsBack"]').value;
+            const departmentId = document.querySelector('select[name="departmentId"]').value;
+            const url = `/analyst/reports/export-trends?monthsBack=${monthsBack}&departmentId=${departmentId || ''}`;
+            window.open(url, '_blank');
+        }
+
+        function generateTrendReportPdf() {
+            const monthsBack = document.querySelector('select[name="monthsBack"]').value;
+            const departmentId = document.querySelector('select[name="departmentId"]').value;
+            const url = `/analyst/reports/export-trends-pdf?monthsBack=${monthsBack}&departmentId=${departmentId || ''}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</div>
+</body>
+</html>

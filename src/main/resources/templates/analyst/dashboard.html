@@ -2,39 +2,46 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Аналитическая панель - Аналитик</title>
+    <title>Дашборд аналитика</title>
 </head>
 <body th:replace="~{layout :: html(
-    title='Аналитическая панель',
-    icon='bi-speedometer2',
+    title='Главная',
+    icon='bi-bar-chart',
     actions=~{:: #actions},
     content=~{:: #content},
     scripts=~{:: #scripts}
 )}">
 
 <div id="actions">
-    <div class="btn-group">
-        <select class="form-select form-select-sm" id="periodSelect" onchange="changePeriod()">
-            <option th:each="m : ${#numbers.sequence(1,12)}"
-                    th:value="${m + ',' + year}"
-                    th:selected="${month == m}"
-                    th:text="${#temporals.format(#temporals.create(year, m, 1), 'MMMM yyyy')}">
+    <div class="btn-group align-items-center">
+        <label for="monthSelect" class="me-2 mb-0">Период: </label>
+        <select class="form-select form-select-sm" id="monthSelect" style="width: auto;">
+            <option th:each="monthEntry : ${@monthUtil.getRussianMonthsMap()}"
+                    th:value="${monthEntry.key}"
+                    th:selected="${month == monthEntry.key}"
+                    th:text="${monthEntry.value}">
+            </option>
+        </select>
+        <select class="form-select form-select-sm ms-1" id="yearSelect" style="width: auto;">
+            <option th:each="y : ${availableYears}"
+                    th:value="${y}"
+                    th:selected="${year == y}"
+                    th:text="${y}">
             </option>
         </select>
     </div>
 </div>
 
 <div id="content">
-    <div class="card bg-dark text-white mb-4">
+    <div class="card bg-info text-white mb-4">
         <div class="card-body">
             <div class="row">
                 <div class="col-md-8">
-                    <h1 class="display-6"><i class="bi bi-bar-chart"></i> Аналитическая панель</h1>
-                    <p class="lead mb-0">Комплексный анализ заработных плат и финансовых показателей</p>
+                    <h1 class="display-6"><i class="bi bi-bar-chart"></i> Дашборд аналитика</h1>
+                    <p class="lead mb-0">Анализ динамики и структуры заработной платы</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <h3 th:text="${#temporals.format(#temporals.create(year, month, 1), 'MMMM yyyy')}"></h3>
-                    <p class="mb-0">Период анализа</p>
+                    <h3 th:text="${russianMonth + ' ' + year}"></h3>
                 </div>
             </div>
         </div>
@@ -42,101 +49,91 @@
 
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Общий ФОТ</h6>
-                            <h3 th:text="${'₽' + #numbers.formatDecimal(companyStats.totalFOT, 1, 2)}">₽0</h3>
-                        </div>
-                        <i class="bi bi-cash-coin fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Фонд оплаты труда компании</p>
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 mb-2"></i>
+                    <h6 class="card-title">Всего сотрудников</h6>
+                    <h3 th:text="${totalEmployees}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Средняя зарплата</h6>
-                            <h3 th:text="${'₽' + #numbers.formatDecimal(companyStats.averageSalary, 1, 2)}">₽0</h3>
-                        </div>
-                        <i class="bi bi-graph-up fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">По компании в целом</p>
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-calculator fs-1 mb-2"></i>
+                    <h6 class="card-title">С рассчитанной ЗП</h6>
+                    <h3 th:text="${employeesWithSalary}">0</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-warning">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Сотрудников</h6>
-                            <h3 th:text="${companyStats.totalEmployees}">0</h3>
-                        </div>
-                        <i class="bi bi-people fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Всего в компании</p>
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-stack fs-1 mb-2"></i>
+                    <h6 class="card-title">Вся ЗП за месяц</h6>
+                    <h3 th:text="${#numbers.formatDecimal(totalFOT, 1, 'POINT', 2, 'COMMA')} + ' руб.'">0 руб.</h3>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Отделов</h6>
-                            <h3 th:text="${companyStats.departmentCount}">0</h3>
-                        </div>
-                        <i class="bi bi-building fs-1 opacity-50"></i>
-                    </div>
-                    <p class="card-text mb-0">Всего отделов</p>
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-graph-up fs-1 mb-2"></i>
+                    <h6 class="card-title">Средняя ЗП</h6>
+                    <h3 th:text="${#numbers.formatDecimal(averageSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'">0 руб.</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8 mb-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-bar-chart"></i> Сравнение отделов по средней зарплате
+                        <i class="bi bi-building"></i> ФОТ по подразделениям
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="departmentComparisonChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-trophy"></i> Топ-5 сотрудников
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div th:each="emp : ${topEmployees.topEmployees}"
-                             class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong th:text="${emp.name}"></strong>
-                                <br>
-                                <small class="text-muted" th:text="${emp.department}"></small>
+                    <div class="list-group">
+                        <div th:each="stat : ${departmentStats}" class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1" th:text="${stat.departmentName}">Отдел</h6>
+                                <strong th:text="${#numbers.formatDecimal(stat.totalFOT, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></strong>
                             </div>
-                            <span class="badge bg-primary rounded-pill">
-                                ₽<span th:text="${#numbers.formatDecimal(emp.salary, 1, 2)}"></span>
-                            </span>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted" th:text="${stat.employeeCount} + ' сотрудников'"></small>
+                                <small class="text-muted"
+                                       th:text="'Средняя: ' + ${#numbers.formatDecimal(stat.averageSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></small>
+                            </div>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-info"
+                                     th:style="'width: ' + ${highestDepartmentFOT > 0 ? (stat.totalFOT / highestDepartmentFOT * 100) : 0} + '%;'">
+                                </div>
+                            </div>
                         </div>
-                        <div th:if="${#lists.isEmpty(topEmployees.topEmployees)}" class="list-group-item text-center text-muted">
-                            <i class="bi bi-info-circle"></i> Нет данных за выбранный период
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-trophy"></i> Топ-5 зарплат
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div th:each="salary : ${topSalaries}" class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1" th:text="${salary.employee.fullName}">Сотрудник</h6>
+                                <strong class="text-success"
+                                        th:text="${#numbers.formatDecimal(salary.netSalary, 1, 'POINT', 2, 'COMMA')} + ' руб.'"></strong>
+                            </div>
+                            <p class="mb-1 text-muted" th:text="${salary.employee.position.title}"></p>
+                            <small class="text-muted" th:text="${salary.employee.department.name}"></small>
                         </div>
                     </div>
                 </div>
@@ -145,51 +142,51 @@
     </div>
 
     <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightning"></i> Быстрый доступ
-                    </h5>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-graph-up text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title">Динамика ЗП</h5>
+                    <p class="card-text">Анализ изменения заработной платы за период</p>
+                    <a th:href="@{/analyst/salary-trends}" class="btn btn-primary">
+                        Анализировать динамику
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-2 text-center mb-3">
-                            <a th:href="@{/analyst/department-comparison(month=${month}, year=${year})}"
-                               class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-bar-chart fs-1 mb-2"></i>
-                                <span>Сравнение</span>
-                            </a>
-                        </div>
-                        <div class="col-md-2 text-center mb-3">
-                            <a th:href="@{/analyst/salary-dynamics(month=${month}, year=${year})}"
-                               class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-graph-up fs-1 mb-2"></i>
-                                <span>Динамика</span>
-                            </a>
-                        </div>
-                        <div class="col-md-2 text-center mb-3">
-                            <a th:href="@{/analyst/payment-structure(month=${month}, year=${year})}"
-                               class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-pie-chart fs-1 mb-2"></i>
-                                <span>Структура</span>
-                            </a>
-                        </div>
-                        <div class="col-md-2 text-center mb-3">
-                            <a th:href="@{/analyst/top-employees(month=${month}, year=${year})}"
-                               class="btn btn-outline-warning btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-trophy fs-1 mb-2"></i>
-                                <span>Топы</span>
-                            </a>
-                        </div>
-                        <div class="col-md-2 text-center mb-3">
-                            <a th:href="@{/analyst/trend-analysis(month=${month}, year=${year})}"
-                               class="btn btn-outline-danger btn-lg w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="bi bi-arrow-trend-up fs-1 mb-2"></i>
-                                <span>Тренды</span>
-                            </a>
-                        </div>
-                    </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-building text-success fs-1 mb-3"></i>
+                    <h5 class="card-title">Анализ по отделам</h5>
+                    <p class="card-text">Сравнительный анализ по подразделениям</p>
+                    <a th:href="@{/analyst/department-analysis}" class="btn btn-success">
+                        Анализ отделов
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-pie-chart text-warning fs-1 mb-3"></i>
+                    <h5 class="card-title">Структура ЗП</h5>
+                    <p class="card-text">Анализ структуры начислений и удержаний</p>
+                    <a th:href="@{/analyst/salary-structure}" class="btn btn-warning">
+                        Анализ структуры
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-badge text-info fs-1 mb-3"></i>
+                    <h5 class="card-title">Анализ по должностям</h5>
+                    <p class="card-text">Сравнение зарплат по должностям</p>
+                    <a th:href="@{/analyst/position-analysis}" class="btn btn-info">
+                        Анализ должностей
+                    </a>
                 </div>
             </div>
         </div>
@@ -197,71 +194,18 @@
 </div>
 
 <div id="scripts">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script th:inline="javascript">
-        function initDepartmentComparisonChart() {
-            const ctx = document.getElementById('departmentComparisonChart').getContext('2d');
-            const departments = /*[[${departmentComparison.departments}]]*/ [];
-            const averageSalaries = /*[[${departmentComparison.averageSalaries}]]*/ [];
-
-            if (!departments || departments.length === 0) {
-                ctx.font = '16px Arial';
-                ctx.fillStyle = '#6c757d';
-                ctx.textAlign = 'center';
-                ctx.fillText('Нет данных для отображения', ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return;
-            }
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: departments,
-                    datasets: [{
-                        label: 'Средняя зарплата (руб.)',
-                        data: averageSalaries,
-                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return '₽' + value.toLocaleString('ru-RU');
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return 'Средняя зарплата: ₽' + context.parsed.y.toLocaleString('ru-RU');
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+    <script>
+        function updatePeriod() {
+            const month = document.getElementById('monthSelect').value;
+            const year = document.getElementById('yearSelect').value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('month', month);
+            url.searchParams.set('year', year);
+            window.location.href = url.toString();
         }
 
-        function changePeriod() {
-            const select = document.getElementById('periodSelect');
-            const [month, year] = select.value.split(',');
-            window.location.href = '/analyst/dashboard?month=' + month + '&year=' + year;
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            initDepartmentComparisonChart();
-        });
+        document.getElementById('monthSelect').addEventListener('change', updatePeriod);
+        document.getElementById('yearSelect').addEventListener('change', updatePeriod);
     </script>
 </div>
 </body>
